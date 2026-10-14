@@ -5,6 +5,7 @@ A learning platform for Vietnamese idioms, built on the VIVID dataset. It combin
 ## Project Structure
 
 ```
+├── frontend/    # React web client
 ├── backend/     # FastAPI application
 ├── ai/          # AI modules and research experiments
 ├── data/        # Dataset management
@@ -12,6 +13,9 @@ A learning platform for Vietnamese idioms, built on the VIVID dataset. It combin
 ├── docs/        # Project documentation
 └── docker-compose.yml
 ```
+
+### `frontend/`
+The web interface learners interact with. It contains page views for the main features (idioms, quizzes, flashcards, progress), reusable components, and a client for calling the backend API.
 
 ### `backend/`
 The web API serving the application. It is organized into layers: API routes, business logic services, database models, request/response schemas, and core configuration. Also contains database migrations, tests, and its Dockerfile.
