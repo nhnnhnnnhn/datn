@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import type { AuthResponse, User } from '@/types'
+import type { AuthResponse, Role, User } from '@/types'
 import { api } from '@/api'
 import { getToken, setToken } from '@/api/client'
 import { createLogger } from '@/lib/logger'
@@ -12,7 +12,7 @@ interface AuthState {
   user: User | null
   loading: boolean
   login(email: string, password: string): Promise<void>
-  register(name: string, email: string, password: string): Promise<void>
+  register(name: string, email: string, password: string, role: Role): Promise<void>
   logout(): Promise<void>
 }
 
@@ -61,11 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw err
         }
       },
-      register: async (name, email, password) => {
+      register: async (name, email, password, role) => {
         try {
-          const res = await api.auth.register(name, email, password)
+          const res = await api.auth.register(name, email, password, role)
           accept(res)
-          log.info('registered', { userId: res.user.id })
+          log.info('registered', { userId: res.user.id, role })
         } catch (err) {
           logFailure(log, 'register failed', err)
           throw err

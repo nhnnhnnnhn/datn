@@ -15,30 +15,22 @@
   --color-brand-700: #9b2f25;
   --color-brand-800: #802a22;
   --color-brand-900: #6b2821;
-  --color-brand-950: #3a110d;
 
-  /* bronze gold */
-  --color-gold-50: #fdf9ed;
-  --color-gold-100: #f9eecb;
-  --color-gold-200: #f3db93;
-  --color-gold-300: #ecc35b;
-  --color-gold-400: #e6ad36;
-  --color-gold-500: #d68f22;
-  --color-gold-600: #bd6e1b;
-  --color-gold-700: #9d4f1a;
+  --color-correct-bg: #e8f5e9;
+  --color-correct-ink: #1b5e20;
+  --color-correct: #2e7d32;
+  --color-wrong-bg: #fdecea;
+  --color-wrong-ink: #8c1d18;
+  --color-wrong: #c62828;
 
-  --color-paper: #faf7f2;
-
-  --animate-fade-in: fade-in 0.25s ease-out;
+  --animate-sheet-up: sheet-up 0.18s ease-out;
 }
 
-@keyframes fade-in {
+@keyframes sheet-up {
   from {
-    opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(100%);
   }
   to {
-    opacity: 1;
     transform: none;
   }
 }
@@ -48,7 +40,7 @@ html {
 }
 
 body {
-  @apply bg-paper font-sans text-stone-800 antialiased;
+  @apply bg-white font-sans text-stone-800 antialiased;
 }
 
 .flip-scene {
@@ -56,7 +48,7 @@ body {
 }
 .flip-card {
   transform-style: preserve-3d;
-  transition: transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1);
+  transition: transform 0.4s cubic-bezier(0.4, 0.2, 0.2, 1);
 }
 .flip-card.is-flipped {
   transform: rotateY(180deg);
@@ -72,5 +64,8 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .flip-card {
     transition: none;
+  }
+  .animate-sheet-up {
+    animation: none;
   }
 }

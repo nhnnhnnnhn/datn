@@ -1,42 +1,42 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
-import { BookOpen, ChartLine, PenLine, Sparkles } from 'lucide-react'
+import type { Role } from '@/types'
+import { ApiError } from '@/api/client'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { Input, Label } from '@/components/ui/Field'
 import { ErrorMessage } from '@/components/ui/Feedback'
 import { USE_MOCK } from '@/lib/constants'
+import { VIVID } from '@/lib/vivid'
 import { cn } from '@/lib/cn'
 
-const FEATURES = [
-  { icon: BookOpen, title: 'Kho tra cứu', text: 'Thành ngữ, tục ngữ kèm giải nghĩa, chủ đề và đặc trưng ngôn ngữ' },
-  { icon: PenLine, title: 'AI chấm giải nghĩa', text: 'Chấm theo 4 tiêu chí và phản hồi chi tiết cho từng bài làm' },
-  { icon: Sparkles, title: 'Quiz & Flashcard tự động', text: 'Sinh câu hỏi, bộ thẻ ôn tập theo chủ đề hoặc điểm yếu' },
-  { icon: ChartLine, title: 'Thống kê tiến độ', text: 'Theo dõi điểm số, chuỗi ngày học và mức độ thành thạo' },
-]
+const DEMO_ACCOUNTS: Record<Role, { name: string; email: string }> = {
+  student: { name: 'Học sinh Demo', email: 'demo.hocsinh@vivid.test' },
+  teacher: { name: 'Cô Nguyễn Thị Lan', email: 'demo.giaovien@vivid.test' },
+}
+const DEMO_PASSWORD = 'demo-password'
 
 export default function Login() {
   const { user, login, register } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [role, setRole] = useState<Role>('student')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<unknown>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  const from = (location.state as { from?: string } | null)?.from ?? '/'
-  if (user) return <Navigate to={from} replace />
+  const from = (location.state as { from?: string } | null)?.from
+  if (user) return <Navigate to={from ?? (user.role === 'teacher' ? '/teacher' : '/')} replace />
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault()
+  async function run(action: () => Promise<void>) {
     setError(null)
     setSubmitting(true)
     try {
-      if (mode === 'login') await login(email, password)
-      else await register(name, email, password)
-      navigate(from, { replace: true })
+      await action()
+      navigate(from ?? '/', { replace: true })
     } catch (err) {
       setError(err)
     } finally {
@@ -44,84 +44,72 @@ export default function Login() {
     }
   }
 
+  function onSubmit(e: FormEvent) {
+    e.preventDefault()
+    run(() => (mode === 'login' ? login(email, password) : register(name, email, password, role)))
+  }
+
+  function tryDemo(demoRole: Role) {
+    const account = DEMO_ACCOUNTS[demoRole]
+    run(async () => {
+      try {
+        await login(account.email, DEMO_PASSWORD)
+      } catch (err) {
+        if (!(err instanceof ApiError && err.status === 401)) throw err
+        await register(account.name, account.email, DEMO_PASSWORD, demoRole)
+      }
+    })
+  }
+
   return (
-    <div className="grid min-h-dvh lg:grid-cols-2">
-      <section className="relative hidden overflow-hidden bg-brand-700 p-12 text-white lg:flex lg:flex-col lg:justify-between">
-        <div className="pointer-events-none absolute -top-24 -right-24 size-96 rounded-full border-[40px] border-white/5" />
-        <div className="pointer-events-none absolute -bottom-32 -left-16 size-[28rem] rounded-full border-[56px] border-gold-300/10" />
-        <div className="relative flex items-center gap-3">
-          <div className="flex size-11 items-center justify-center rounded-xl bg-gold-100 font-serif text-xl font-bold text-brand-700">V</div>
-          <span className="font-serif text-xl font-bold">VIVID Learn</span>
-        </div>
-        <div className="relative">
-          <p className="font-serif text-4xl leading-tight font-semibold">
-            “Đi một ngày đàng,
-            <br />
-            học một sàng khôn.”
-          </p>
-          <p className="mt-4 max-w-md text-brand-100">
-            Nền tảng học thành ngữ, tục ngữ tiếng Việt xây dựng trên bộ dữ liệu VIVID — 1.636 câu được chuyên gia ngôn
-            ngữ gán nhãn chủ đề và đặc trưng.
-          </p>
-          <div className="mt-10 grid grid-cols-2 gap-4">
-            {FEATURES.map(({ icon: Icon, title, text }) => (
-              <div key={title} className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
-                <Icon className="size-5 text-gold-300" />
-                <div className="mt-2 font-medium">{title}</div>
-                <div className="mt-1 text-sm text-brand-100/80">{text}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <p className="relative text-sm text-brand-200">Đồ án tốt nghiệp</p>
-      </section>
+    <div className="flex min-h-dvh flex-col bg-stone-50">
+      <header className="px-6 py-5">
+        <span className="text-lg font-bold tracking-tight text-brand-700">VIVID</span>
+        <span className="ml-2 text-sm text-stone-500">Thành ngữ Việt</span>
+      </header>
 
-      <section className="flex items-center justify-center px-4 py-12 sm:px-8">
+      <main className="flex flex-1 items-start justify-center px-4 pt-6 pb-16 sm:pt-16">
         <div className="w-full max-w-sm">
-          <div className="mb-8 lg:hidden">
-            <div className="flex size-11 items-center justify-center rounded-xl bg-brand-600 font-serif text-xl font-bold text-gold-100">V</div>
-          </div>
-          <h1 className="font-serif text-3xl font-semibold text-stone-900">
-            {mode === 'login' ? 'Chào mừng trở lại' : 'Tạo tài khoản'}
+          <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
+            {mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
           </h1>
-          <p className="mt-2 text-stone-500">
-            {mode === 'login' ? 'Đăng nhập để tiếp tục hành trình học.' : 'Bắt đầu học thành ngữ, tục ngữ ngay hôm nay.'}
+          <p className="mt-1 text-[15px] text-stone-500">
+            Tra cứu, luyện giải nghĩa và ôn tập thành ngữ, tục ngữ tiếng Việt trên bộ dữ liệu{' '}
+            <a href={VIVID.arxivUrl} target="_blank" rel="noreferrer" className="text-stone-700 underline decoration-stone-300 underline-offset-2">
+              VIVID ({VIVID.venue})
+            </a>
+            : {VIVID.releasedPairs.toLocaleString('vi-VN')} câu do chuyên gia ngôn ngữ gán nhãn.
           </p>
 
-          <div className="mt-6 grid grid-cols-2 rounded-xl bg-stone-100 p-1 text-sm font-medium">
-            {(['login', 'register'] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => {
-                  setMode(m)
-                  setError(null)
-                }}
-                className={cn('rounded-lg py-2 transition', mode === m ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500')}
-              >
-                {m === 'login' ? 'Đăng nhập' : 'Đăng ký'}
-              </button>
-            ))}
-          </div>
-
-          <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          <form onSubmit={onSubmit} className="mt-6 space-y-4 rounded-lg border border-stone-200 bg-white p-5">
             {mode === 'register' && (
-              <div>
-                <Label htmlFor="name">Họ và tên</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nguyễn Văn A" autoComplete="name" />
-              </div>
+              <>
+                <fieldset>
+                  <legend className="mb-1.5 text-sm font-medium text-stone-700">Bạn là</legend>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['student', 'teacher'] as const).map((r) => (
+                      <label
+                        key={r}
+                        className={cn(
+                          'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm',
+                          role === r ? 'border-stone-900 bg-stone-50 font-medium' : 'border-stone-300',
+                        )}
+                      >
+                        <input type="radio" name="role" value={r} checked={role === r} onChange={() => setRole(r)} className="accent-stone-900" />
+                        {r === 'student' ? 'Học sinh' : 'Giáo viên'}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <div>
+                  <Label htmlFor="name">Họ và tên</Label>
+                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+                </div>
+              </>
             )}
             <div>
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="ban@example.com"
-                autoComplete="email"
-                required
-              />
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
             </div>
             <div>
               <Label htmlFor="password">Mật khẩu</Label>
@@ -130,24 +118,46 @@ export default function Login() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Tối thiểu 6 ký tự"
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 required
               />
+              {mode === 'register' && <p className="mt-1 text-xs text-stone-500">Tối thiểu 6 ký tự.</p>}
             </div>
             {error != null && <ErrorMessage error={error} />}
-            <Button type="submit" size="lg" className="w-full" loading={submitting}>
+            <Button type="submit" variant="dark" size="lg" className="w-full" loading={submitting}>
               {mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
             </Button>
           </form>
 
+          <p className="mt-4 text-center text-sm text-stone-600">
+            {mode === 'login' ? 'Chưa có tài khoản? ' : 'Đã có tài khoản? '}
+            <button
+              type="button"
+              onClick={() => {
+                setMode(mode === 'login' ? 'register' : 'login')
+                setError(null)
+              }}
+              className="font-medium text-brand-700 hover:underline"
+            >
+              {mode === 'login' ? 'Đăng ký' : 'Đăng nhập'}
+            </button>
+          </p>
+
           {USE_MOCK && (
-            <p className="mt-6 rounded-xl bg-gold-50 px-4 py-3 text-xs leading-relaxed text-gold-700">
-              Chế độ demo: nhập email bất kỳ và mật khẩu từ 6 ký tự để vào thử. Dữ liệu chỉ lưu trong trình duyệt này.
-            </p>
+            <div className="mt-8 border-t border-stone-200 pt-5">
+              <p className="text-sm text-stone-600">Bản demo chưa có máy chủ. Vào thử bằng tài khoản mẫu:</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button variant="outline" onClick={() => tryDemo('student')} disabled={submitting}>
+                  Học sinh
+                </Button>
+                <Button variant="outline" onClick={() => tryDemo('teacher')} disabled={submitting}>
+                  Giáo viên
+                </Button>
+              </div>
+            </div>
           )}
         </div>
-      </section>
+      </main>
     </div>
   )
 }

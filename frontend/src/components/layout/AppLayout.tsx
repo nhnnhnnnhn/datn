@@ -1,117 +1,181 @@
-import { NavLink, Outlet } from 'react-router'
-import { ChartLine, House, Layers, Library, ListChecks, LogOut, PenLine } from 'lucide-react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
+import { useQuery } from '@tanstack/react-query'
+import { BookOpen, ClipboardList, Flame, House, Info, Layers, LineChart, PenLine, Search, Users } from 'lucide-react'
+import { api } from '@/api'
 import { useAuth } from '@/context/AuthContext'
-import { USE_MOCK } from '@/lib/constants'
+import { VIVID } from '@/lib/vivid'
 import { cn } from '@/lib/cn'
 
-const NAV = [
-  { to: '/', label: 'Trang chủ', short: 'Chính', icon: House, end: true },
-  { to: '/idioms', label: 'Kho tra cứu', short: 'Tra cứu', icon: Library },
-  { to: '/practice', label: 'Luyện giải nghĩa', short: 'Luyện', icon: PenLine },
-  { to: '/quiz', label: 'Quiz', short: 'Quiz', icon: ListChecks },
-  { to: '/flashcards', label: 'Flashcard', short: 'Thẻ', icon: Layers },
-  { to: '/progress', label: 'Tiến độ', short: 'Tiến độ', icon: ChartLine },
+const STUDENT_NAV = [
+  { to: '/', label: 'Trang chủ', icon: House, end: true },
+  { to: '/idioms', label: 'Tra cứu', icon: BookOpen },
+  { to: '/practice', label: 'Luyện viết', icon: PenLine },
+  { to: '/sets', label: 'Bộ thẻ', icon: Layers },
+  { to: '/assignments', label: 'Bài tập', icon: ClipboardList },
+  { to: '/progress', label: 'Tiến độ', icon: LineChart },
+  { to: '/about', label: 'Về VIVID', icon: Info, desktopOnly: true },
 ]
 
-function Logo() {
+const TEACHER_NAV = [
+  { to: '/teacher', label: 'Lớp học', icon: Users, end: false },
+  { to: '/idioms', label: 'Tra cứu', icon: BookOpen },
+  { to: '/about', label: 'Về VIVID', icon: Info },
+]
+
+function HeaderSearch() {
+  const navigate = useNavigate()
+  const [q, setQ] = useState('')
+  function onSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (q.trim()) navigate(`/idioms?q=${encodeURIComponent(q.trim())}`)
+    setQ('')
+  }
   return (
-    <div className="flex items-center gap-2.5">
-      <div className="flex size-9 items-center justify-center rounded-xl bg-brand-600 font-serif text-lg font-bold text-gold-100 shadow-sm">
-        V
-      </div>
-      <div className="leading-tight">
-        <div className="font-serif text-lg font-bold text-stone-900">VIVID Learn</div>
-        <div className="text-[11px] text-stone-500">Thành ngữ · Tục ngữ Việt</div>
-      </div>
+    <form onSubmit={onSubmit} role="search" className="relative hidden lg:block">
+      <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-stone-400" />
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Tra thành ngữ, tục ngữ"
+        aria-label="Tra nhanh"
+        className="h-8 w-56 rounded-md border border-stone-300 bg-stone-50 pr-3 pl-8 text-sm placeholder:text-stone-400 focus:border-stone-500 focus:bg-white focus:outline-none"
+      />
+    </form>
+  )
+}
+
+function StreakCounter() {
+  const { data } = useQuery({ queryKey: ['progress'], queryFn: api.progress.summary, meta: { tag: 'PROGRESS' } })
+  if (!data) return null
+  return (
+    <Link
+      to="/progress"
+      title={`${data.streak} ngày học liên tiếp`}
+      className={cn('flex items-center gap-1 text-sm font-semibold tabular-nums', data.todayCount ? 'text-orange-600' : 'text-stone-400')}
+    >
+      <Flame className="size-4" fill={data.todayCount ? 'currentColor' : 'none'} />
+      {data.streak}
+    </Link>
+  )
+}
+
+function UserMenu() {
+  const { user, logout } = useAuth()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const location = useLocation()
+
+  useEffect(() => setOpen(false), [location.pathname])
+  useEffect(() => {
+    if (!open) return
+    const close = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [open])
+
+  if (!user) return null
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-label="Tài khoản"
+        className="flex size-8 items-center justify-center rounded-full bg-stone-200 text-sm font-semibold text-stone-700 hover:bg-stone-300"
+      >
+        {user.name.trim().charAt(0).toUpperCase()}
+      </button>
+      {open && (
+        <div className="absolute right-0 z-40 mt-2 w-60 rounded-md border border-stone-200 bg-white py-1 text-sm shadow-lg">
+          <div className="border-b border-stone-100 px-3 py-2">
+            <div className="truncate font-medium text-stone-900">{user.name}</div>
+            <div className="truncate text-xs text-stone-500">
+              {user.role === 'teacher' ? 'Giáo viên' : 'Học sinh'} · {user.email}
+            </div>
+          </div>
+          <button onClick={logout} className="w-full px-3 py-2 text-left text-stone-700 hover:bg-stone-50">
+            Đăng xuất
+          </button>
+        </div>
+      )}
     </div>
   )
 }
 
 export function AppLayout() {
-  const { user, logout } = useAuth()
-  const initials = (user?.name ?? '?').trim().charAt(0).toUpperCase()
+  const { user } = useAuth()
+  const nav: { to: string; label: string; icon: typeof House; end?: boolean; desktopOnly?: boolean }[] =
+    user?.role === 'teacher' ? TEACHER_NAV : STUDENT_NAV
+  const mobileNav = nav.filter((n) => !n.desktopOnly)
 
   return (
     <div className="min-h-dvh">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-stone-200/80 bg-white/70 backdrop-blur lg:flex">
-        <div className="px-5 pt-6 pb-8">
-          <Logo />
-        </div>
-        <nav className="flex-1 space-y-1 px-3">
-          {NAV.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
-                  isActive ? 'bg-brand-50 text-brand-700' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900',
-                )
-              }
-            >
-              <Icon className="size-[18px]" />
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-        {USE_MOCK && (
-          <div className="mx-4 mb-3 rounded-xl border border-dashed border-gold-300 bg-gold-50 px-3 py-2 text-xs text-gold-700">
-            Chế độ demo · dữ liệu mô phỏng, chưa kết nối backend
+      <header className="sticky top-0 z-30 border-b border-stone-200 bg-white">
+        <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4">
+          <Link to={user?.role === 'teacher' ? '/teacher' : '/'} className="flex items-baseline gap-2">
+            <span className="text-lg font-bold tracking-tight text-brand-700">VIVID</span>
+            <span className="hidden text-sm text-stone-500 sm:inline">Thành ngữ Việt</span>
+          </Link>
+          <nav className="hidden h-full items-stretch gap-5 md:flex">
+            {nav.map(({ to, label, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center border-b-2 text-sm transition-colors',
+                    isActive ? 'border-brand-600 font-medium text-stone-900' : 'border-transparent text-stone-600 hover:text-stone-900',
+                  )
+                }
+              >
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+          <div className="ml-auto flex items-center gap-4">
+            <HeaderSearch />
+            {user?.role === 'student' && <StreakCounter />}
+            <UserMenu />
           </div>
-        )}
-        <div className="flex items-center gap-3 border-t border-stone-200/80 p-4">
-          <div className="flex size-9 items-center justify-center rounded-full bg-gold-100 font-semibold text-gold-700">
-            {initials}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium text-stone-900">{user?.name}</div>
-            <div className="truncate text-xs text-stone-500">{user?.email}</div>
-          </div>
-          <button
-            onClick={logout}
-            className="rounded-lg p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
-            title="Đăng xuất"
-            aria-label="Đăng xuất"
-          >
-            <LogOut className="size-4" />
-          </button>
-        </div>
-      </aside>
-
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-stone-200/80 bg-paper/90 px-4 py-3 backdrop-blur lg:hidden">
-        <Logo />
-        <div className="flex items-center gap-1">
-          <span className="flex size-9 items-center justify-center rounded-full bg-gold-100 font-semibold text-gold-700" title={user?.name}>
-            {initials}
-          </span>
-          <button onClick={logout} className="rounded-lg p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700" aria-label="Đăng xuất">
-            <LogOut className="size-4" />
-          </button>
         </div>
       </header>
 
-      <main className="lg:pl-64">
-        <div className="mx-auto max-w-6xl px-4 pt-6 pb-28 sm:px-6 lg:px-10 lg:pt-10 lg:pb-12">
-          <Outlet />
-        </div>
+
+      <main className="mx-auto max-w-6xl px-4 pt-6 pb-8 md:pt-8 md:pb-12">
+        <Outlet />
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t border-stone-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
-        {NAV.map(({ to, short, icon: Icon, end }) => (
+      <footer className="border-t border-stone-200 pb-24 md:pb-0">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-1 px-4 py-4 text-xs text-stone-500">
+          <p>
+            Dữ liệu, nhãn đặc trưng và tiêu chí chấm: <span className="text-stone-700">VIVID ({VIVID.shortCite})</span> · giấy phép {VIVID.license}
+          </p>
+          <Link to="/about" className="font-medium text-stone-700 hover:text-brand-700">
+            Về bộ dữ liệu VIVID
+          </Link>
+        </div>
+      </footer>
+
+      <nav
+        className={cn(
+          'fixed inset-x-0 bottom-0 z-30 grid border-t border-stone-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden',
+          mobileNav.length === 6 ? 'grid-cols-6' : 'grid-cols-3',
+        )}
+      >
+        {mobileNav.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
             end={end}
             className={({ isActive }) =>
-              cn(
-                'flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium',
-                isActive ? 'text-brand-600' : 'text-stone-500',
-              )
+              cn('flex flex-col items-center gap-0.5 py-2 text-[10px]', isActive ? 'font-semibold text-brand-700' : 'text-stone-500')
             }
           >
             <Icon className="size-5" />
-            {short}
+            {label}
           </NavLink>
         ))}
       </nav>
