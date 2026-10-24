@@ -8,6 +8,14 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // The bundled VIVID dataset changes far less often than app code, so cache it separately
+        manualChunks: (id) => (id.endsWith('vivid-idioms.json') ? 'vivid-data' : undefined),
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {
