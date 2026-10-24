@@ -1,4 +1,4 @@
-import type { ErrorType, IdiomKind, QuestionType, TopicId, TraitId } from '@/types'
+import type { Criterion, ErrorType, MasteryLevel, QuestionType, SubmissionStatus, TopicId, TraitId } from '@/types'
 
 export const TOPIC_IDS: TopicId[] = [
   'criticism',
@@ -10,52 +10,38 @@ export const TOPIC_IDS: TopicId[] = [
   'other',
 ]
 
-export const TOPICS: Record<TopicId, { label: string; description: string; badge: string; color: string }> = {
+export const TOPICS: Record<TopicId, { label: string; description: string }> = {
   criticism: {
     label: 'Phê phán',
     description: 'Phê phán, châm biếm thói xấu và hành vi tiêu cực',
-    badge: 'bg-rose-50 text-rose-700 ring-rose-200',
-    color: '#c2410c',
   },
   life_lessons: {
     label: 'Bài học cuộc sống',
     description: 'Triết lý, lời khuyên và bài học về cách sống',
-    badge: 'bg-amber-50 text-amber-800 ring-amber-200',
-    color: '#b45309',
   },
   work_nature: {
     label: 'Lao động & Thiên nhiên',
     description: 'Kinh nghiệm sản xuất, lao động, thời tiết và tự nhiên',
-    badge: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-    color: '#047857',
   },
   social: {
     label: 'Quan hệ xã hội',
     description: 'Gia đình, làng xóm, bạn bè và các mối quan hệ',
-    badge: 'bg-sky-50 text-sky-700 ring-sky-200',
-    color: '#0369a1',
   },
   love: {
     label: 'Tình yêu',
     description: 'Tình yêu đôi lứa và hôn nhân',
-    badge: 'bg-pink-50 text-pink-700 ring-pink-200',
-    color: '#be185d',
   },
   virtues: {
     label: 'Phẩm chất đạo đức',
     description: 'Ca ngợi phẩm chất, đạo đức tốt đẹp của con người',
-    badge: 'bg-violet-50 text-violet-700 ring-violet-200',
-    color: '#6d28d9',
   },
   other: {
     label: 'Khác',
     description: 'Các chủ đề khác',
-    badge: 'bg-stone-100 text-stone-700 ring-stone-200',
-    color: '#57534e',
   },
 }
 
-export const TRAIT_IDS: TraitId[] = ['literal', 'pragmatic', 'sino_vietnamese', 'uncommon_vocab', 'folk_knowledge']
+export const TRAIT_IDS: TraitId[] = ['literal', 'sino_vietnamese', 'uncommon_vocab', 'folk_knowledge', 'pragmatic']
 
 export const TRAITS: Record<TraitId, { label: string; short: string; aspect: string; hint: string }> = {
   literal: {
@@ -90,17 +76,13 @@ export const TRAITS: Record<TraitId, { label: string; short: string; aspect: str
   },
 }
 
-export const KINDS: Record<IdiomKind, string> = {
-  thanh_ngu: 'Thành ngữ',
-  tuc_ngu: 'Tục ngữ',
-}
-
-export const CRITERIA = [
-  { key: 'accuracy', label: 'Ý nghĩa cốt lõi', hint: 'Nắm đúng ý chính của câu' },
-  { key: 'nuance', label: 'Sắc thái & ẩn ý', hint: 'Phản ánh ngữ cảnh, thái độ, nghĩa hàm ẩn' },
-  { key: 'fluency', label: 'Diễn đạt', hint: 'Rõ ràng, mạch lạc, tự nhiên' },
-  { key: 'completeness', label: 'Độ đầy đủ', hint: 'Bao quát các ý chính' },
-] as const
+// Category colors validated for colour-blind separation; always shown next to the label
+export const CRITERIA: { key: Criterion; label: string; hint: string; color: string }[] = [
+  { key: 'accuracy', label: 'Ý nghĩa cốt lõi', hint: 'Nắm đúng ý chính của câu', color: '#d92d20' },
+  { key: 'nuance', label: 'Sắc thái & ẩn ý', hint: 'Thái độ khen/chê, ngữ cảnh, nghĩa hàm ẩn', color: '#1570ef' },
+  { key: 'fluency', label: 'Diễn đạt', hint: 'Rõ ràng, mạch lạc, tự nhiên', color: '#dc6803' },
+  { key: 'completeness', label: 'Độ đầy đủ', hint: 'Bao quát các ý chính của nghĩa chuẩn', color: '#7a5af8' },
+]
 
 export const ERROR_TYPES: Record<ErrorType, { label: string; description: string }> = {
   literal_interpretation: {
@@ -123,13 +105,41 @@ export const ERROR_TYPES: Record<ErrorType, { label: string; description: string
     label: 'Quá ngắn',
     description: 'Bài làm quá ngắn để đánh giá đầy đủ.',
   },
+  over_interpretation: {
+    label: 'Suy diễn nghĩa bóng',
+    description: 'Câu chỉ mang nghĩa đen nhưng bài làm lại suy ra nghĩa bóng.',
+  },
+  unclear_wording: {
+    label: 'Diễn đạt chưa rõ',
+    description: 'Câu văn chưa hoàn chỉnh hoặc khó hiểu.',
+  },
 }
 
 export const QUESTION_TYPES: Record<QuestionType, { label: string; description: string }> = {
   meaning: { label: 'Chọn nghĩa đúng', description: 'Cho câu, chọn lời giải nghĩa đúng' },
   reverse: { label: 'Chọn câu phù hợp', description: 'Cho lời giải nghĩa, chọn câu thành ngữ/tục ngữ' },
   fill_blank: { label: 'Điền từ còn thiếu', description: 'Hoàn thiện câu bị khuyết một từ' },
-  topic: { label: 'Phân loại chủ đề', description: 'Xác định chủ đề của câu' },
+  topic: { label: 'Phân loại chủ đề', description: 'Xác định chủ đề của câu (nhiệm vụ phân loại chủ đề của VIVID)' },
+  traits: { label: 'Nhận diện đặc trưng', description: 'Chọn mọi đặc trưng ngôn ngữ của câu (nhiệm vụ phân loại đặc trưng của VIVID)' },
+}
+
+export const MASTERY_LEVELS: MasteryLevel[] = ['not_started', 'attempted', 'familiar', 'proficient', 'mastered']
+
+// Single-hue ramp (validated as ordinal); not_started stays neutral gray
+export const MASTERY: Record<MasteryLevel, { label: string; color: string; ink: string }> = {
+  not_started: { label: 'Chưa học', color: '#e7e5e4', ink: '#57534e' },
+  attempted: { label: 'Đã thử', color: '#7aa2f7', ink: '#0c1a3d' },
+  familiar: { label: 'Làm quen', color: '#3b6fe0', ink: '#ffffff' },
+  proficient: { label: 'Thành thạo', color: '#1f4fb8', ink: '#ffffff' },
+  mastered: { label: 'Thông thạo', color: '#14306f', ink: '#ffffff' },
+}
+
+export const SUBMISSION_STATUS: Record<SubmissionStatus, { label: string; className: string }> = {
+  assigned: { label: 'Chưa nộp', className: 'text-stone-600' },
+  submitted: { label: 'Đã nộp', className: 'text-emerald-700' },
+  late: { label: 'Nộp muộn', className: 'text-amber-700' },
+  missing: { label: 'Quá hạn', className: 'text-red-700' },
+  returned: { label: 'Đã trả bài', className: 'text-sky-700' },
 }
 
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'

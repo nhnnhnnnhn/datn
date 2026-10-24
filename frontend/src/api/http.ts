@@ -4,7 +4,8 @@ import { request } from './client'
 export const httpApi: Api = {
   auth: {
     login: (email, password) => request('POST', '/auth/login', { body: { email, password } }),
-    register: (name, email, password) => request('POST', '/auth/register', { body: { name, email, password } }),
+    register: (name, email, password, role) =>
+      request('POST', '/auth/register', { body: { name, email, password, role } }),
     me: () => request('GET', '/auth/me'),
     // Stateless JWT: logging out only drops the client-side token
     logout: async () => {},
@@ -14,9 +15,12 @@ export const httpApi: Api = {
     get: (id) => request('GET', `/idioms/${id}`),
     daily: () => request('GET', '/idioms/daily'),
     random: (query) => request('GET', '/idioms/random', { query: { ...query } }),
+    neighbors: (id) => request('GET', `/idioms/${id}/neighbors`),
+    stats: () => request('GET', '/idioms/stats'),
   },
   grading: {
     grade: (idiomId, answer) => request('POST', '/grading', { body: { idiomId, answer } }),
+    hint: (idiomId, level) => request('POST', '/grading/hint', { body: { idiomId, level } }),
     history: (limit = 20) => request('GET', '/grading/history', { query: { limit } }),
   },
   quizzes: {
@@ -38,5 +42,22 @@ export const httpApi: Api = {
   },
   progress: {
     summary: () => request('GET', '/progress/summary'),
+  },
+  classes: {
+    list: () => request('GET', '/classes'),
+    get: (id) => request('GET', `/classes/${id}`),
+    create: (name) => request('POST', '/classes', { body: { name } }),
+    join: (code) => request('POST', '/classes/join', { body: { code } }),
+    students: (id) => request('GET', `/classes/${id}/students`),
+    report: (id) => request('GET', `/classes/${id}/report`),
+  },
+  assignments: {
+    list: (classId) => request('GET', '/assignments', { query: { classId } }),
+    get: (id) => request('GET', `/assignments/${id}`),
+    create: (input) => request('POST', '/assignments', { body: input }),
+    submissions: (id) => request('GET', `/assignments/${id}/submissions`),
+    mySubmission: (id) => request('GET', `/assignments/${id}/submissions/me`),
+    submit: (id, answers) => request('POST', `/assignments/${id}/submissions`, { body: { answers } }),
+    review: (submissionId, review) => request('POST', `/submissions/${submissionId}/review`, { body: review }),
   },
 }

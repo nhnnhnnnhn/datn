@@ -15,6 +15,12 @@ export function syllables(s: string): string[] {
     .filter(Boolean)
 }
 
+export function sameAnswer(selected: number[], answer: number[]): boolean {
+  const a = [...selected].sort((x, y) => x - y)
+  const b = [...answer].sort((x, y) => x - y)
+  return a.length === b.length && a.every((v, i) => v === b[i])
+}
+
 export function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }

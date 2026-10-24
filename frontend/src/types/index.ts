@@ -9,8 +9,6 @@ export type TopicId =
 
 export type TraitId = 'literal' | 'pragmatic' | 'sino_vietnamese' | 'uncommon_vocab' | 'folk_knowledge'
 
-export type IdiomKind = 'thanh_ngu' | 'tuc_ngu'
-
 export interface GlossaryItem {
   term: string
   meaning: string
@@ -20,18 +18,25 @@ export interface Idiom {
   id: number
   phrase: string
   explanation: string
-  kind: IdiomKind
   topic: TopicId
   traits: TraitId[]
-  example?: string
+  note?: string
+  citation?: { text: string; source: string }
   glossary?: GlossaryItem[]
+}
+
+export interface IdiomStats {
+  total: number
+  byTopic: Record<TopicId, number>
+  byTrait: Record<TraitId, number>
+  withGlossary: number
+  withCitation: number
 }
 
 export interface IdiomQuery {
   q?: string
   topic?: TopicId
   trait?: TraitId
-  kind?: IdiomKind
   page?: number
   pageSize?: number
 }
@@ -43,10 +48,13 @@ export interface Paginated<T> {
   pageSize: number
 }
 
+export type Role = 'student' | 'teacher'
+
 export interface User {
   id: string
   name: string
   email: string
+  role: Role
   dailyGoal: number
   createdAt: string
 }
@@ -71,13 +79,31 @@ export type ErrorType =
   | 'pragmatic_flattening'
   | 'missing_points'
   | 'too_short'
+  | 'over_interpretation'
+  | 'unclear_wording'
+
+export type Criterion = keyof CriterionScores
+
+export interface FeedbackIssue {
+  criterion: Criterion
+  type: ErrorType
+  title: string
+  detail: string
+}
 
 export interface GradingFeedback {
   summary: string
+  comments: Record<Criterion, string>
+  issues: FeedbackIssue[]
   strengths: string[]
-  improvements: string[]
-  errorTypes: ErrorType[]
   missingKeywords: string[]
+}
+
+export type HintLevel = 1 | 2 | 3
+
+export interface GradingHint {
+  level: HintLevel
+  text: string
 }
 
 export interface GradingResult {
@@ -92,7 +118,7 @@ export interface GradingResult {
   createdAt: string
 }
 
-export type QuestionType = 'meaning' | 'reverse' | 'fill_blank' | 'topic'
+export type QuestionType = 'meaning' | 'reverse' | 'fill_blank' | 'topic' | 'traits'
 
 export interface QuizQuestion {
   id: string
@@ -101,7 +127,7 @@ export interface QuizQuestion {
   prompt: string
   highlight?: string
   options: string[]
-  answerIndex: number
+  answer: number[]
   explanation: string
 }
 
@@ -110,6 +136,7 @@ export interface QuizConfig {
   types: QuestionType[]
   topic?: TopicId
   trait?: TraitId
+  deckId?: string
 }
 
 export interface Quiz {
@@ -121,7 +148,7 @@ export interface Quiz {
 
 export interface QuizAnswer {
   questionId: string
-  selectedIndex: number | null
+  selected: number[]
 }
 
 export interface QuizResult {
@@ -182,10 +209,14 @@ export interface TopicStat {
   avgScore: number | null
 }
 
+export type MasteryLevel = 'not_started' | 'attempted' | 'familiar' | 'proficient' | 'mastered'
+
 export interface TraitStat {
   trait: TraitId
+  total: number
   attempts: number
   avgScore: number | null
+  levels: Record<MasteryLevel, number>
 }
 
 export interface DailyPoint {
@@ -216,4 +247,85 @@ export interface ProgressSummary {
   scoreHistory: DailyPoint[]
   activity: ActivityDay[]
   weakIdioms: { idiom: Idiom; bestScore: number }[]
+}
+
+export interface Classroom {
+  id: string
+  name: string
+  code: string
+  teacherName: string
+  studentCount: number
+  createdAt: string
+}
+
+export interface ClassStudent {
+  id: string
+  name: string
+  email: string
+  lastActiveAt: string | null
+  attempts: number
+  avgScore: number | null
+}
+
+export interface MasteryCell {
+  level: MasteryLevel
+  avgScore: number | null
+  attempts: number
+}
+
+export interface ClassReport {
+  classId: string
+  rows: { student: ClassStudent; mastery: Record<TraitId, MasteryCell> }[]
+  traitAverages: Record<TraitId, number | null>
+}
+
+export type SubmissionStatus = 'assigned' | 'submitted' | 'late' | 'missing' | 'returned'
+
+export interface Assignment {
+  id: string
+  classId: string
+  className: string
+  title: string
+  instructions: string
+  idiomIds: number[]
+  dueAt: string
+  createdAt: string
+  studentCount: number
+  submittedCount: number
+  myStatus?: SubmissionStatus
+}
+
+export interface AssignmentInput {
+  classId: string
+  title: string
+  instructions: string
+  idiomIds: number[]
+  dueAt: string
+}
+
+export interface SubmissionItem {
+  idiomId: number
+  phrase: string
+  answer: string
+  overall: number
+  scores: CriterionScores
+  summary: string
+}
+
+export interface Submission {
+  id: string
+  assignmentId: string
+  studentId: string
+  studentName: string
+  status: SubmissionStatus
+  submittedAt: string | null
+  items: SubmissionItem[]
+  aiScore: number | null
+  teacherScore: number | null
+  teacherComment: string | null
+}
+
+export interface SubmissionReview {
+  score: number
+  comment: string
 }

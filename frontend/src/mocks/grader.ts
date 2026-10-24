@@ -1,4 +1,5 @@
-import type { CriterionScores, ErrorType, GradingFeedback, Idiom } from '@/types'
+import type { Criterion, CriterionScores, ErrorType, FeedbackIssue, GradingFeedback, GradingHint, HintLevel, Idiom } from '@/types'
+import { TOPICS } from '@/lib/constants'
 import { normalize, syllables } from '@/lib/text'
 
 // Stand-in grader for the mock API: word overlap with the reference explanation.
@@ -87,8 +88,9 @@ export function gradeAnswer(idiom: Idiom, answer: string): { scores: CriterionSc
   const ansSet = contentSet(ans)
   const refSet = contentSet(ref)
   const wordCount = syllables(ans).length
-  const errorTypes: ErrorType[] = []
-  const improvements: string[] = []
+  const issues: FeedbackIssue[] = []
+  const add = (criterion: Criterion, type: ErrorType, title: string, detail: string) =>
+    issues.push({ criterion, type, title, detail })
 
   const recall = overlap(refSet, ansSet) / Math.max(1, refSet.size)
   const refBi = bigrams(ref)
@@ -98,10 +100,10 @@ export function gradeAnswer(idiom: Idiom, answer: string): { scores: CriterionSc
   let accuracy = clamp5(clamp01(sim / 0.42) * 5)
   if (ansSet.size === 0) accuracy = 0
 
-  if (ansSet.size > 0 && ansSet.size < 3) {
+  const tooShort = ansSet.size > 0 && ansSet.size < 3
+  if (tooShort) {
     accuracy = Math.min(accuracy, 1)
-    errorTypes.push('too_short')
-    improvements.push('Viết lời giải nghĩa đầy đủ hơn, ít nhất một câu hoàn chỉnh.')
+    add('fluency', 'too_short', 'Bài làm quá ngắn', 'Viết thành ít nhất một câu hoàn chỉnh để nêu đủ ý nghĩa của câu.')
   }
 
   // An answer that mostly echoes the phrase's own words is a literal reading
@@ -109,17 +111,36 @@ export function gradeAnswer(idiom: Idiom, answer: string): { scores: CriterionSc
   const phraseShare = overlap(ansSet, phraseSet) / Math.max(1, ansSet.size)
   if (!idiom.traits.includes('literal') && phraseShare >= 0.5 && recall < 0.3 && ansSet.size >= 3) {
     accuracy = Math.min(accuracy, 1)
-    errorTypes.push('literal_interpretation')
-    improvements.push('Đừng chỉ diễn lại câu chữ — hãy nêu ý nghĩa bóng mà câu muốn gửi gắm.')
+    add(
+      'accuracy',
+      'literal_interpretation',
+      'Đang hiểu theo nghĩa đen',
+      'Bài làm chủ yếu diễn lại các chữ trong câu. Hãy nêu điều câu muốn nói về con người hoặc cuộc sống.',
+    )
   }
 
+  const hardWords = idiom.traits.includes('sino_vietnamese') || idiom.traits.includes('uncommon_vocab')
+  if (hardWords && accuracy <= 2 && idiom.glossary?.length) {
+    add(
+      'accuracy',
+      'lexical_gap',
+      'Có từ chưa hiểu đúng',
+      `Hãy tra nghĩa ${idiom.glossary.map((g) => `“${g.term}”`).join(', ')} trước khi giải nghĩa cả câu.`,
+    )
+  }
+
+  const pragmatic = idiom.traits.includes('pragmatic')
   let nuance: number
-  if (idiom.traits.includes('pragmatic')) {
+  if (pragmatic) {
     const ansCue = hasAny(ans, CUES)
     nuance = ansCue ? Math.min(5, accuracy + 1) : Math.min(accuracy, 2)
     if (!ansCue && accuracy > 0) {
-      errorTypes.push('pragmatic_flattening')
-      improvements.push('Câu này mang sắc thái đánh giá — hãy nói rõ câu đang chê, mỉa mai hay khuyên răn điều gì.')
+      add(
+        'nuance',
+        'pragmatic_flattening',
+        'Chưa nêu thái độ của câu',
+        'Câu này mang sắc thái đánh giá. Hãy nói rõ câu đang chê, mỉa mai hay khuyên răn điều gì.',
+      )
     }
   } else {
     nuance = clamp5(accuracy * 0.9 + (hasAny(ans, CUES) && hasAny(ref, CUES) ? 1 : 0))
@@ -127,7 +148,12 @@ export function gradeAnswer(idiom: Idiom, answer: string): { scores: CriterionSc
 
   if (idiom.traits.includes('literal') && hasAny(ans, FIGURATIVE_CUES)) {
     nuance = Math.min(nuance, 2)
-    improvements.push('Câu này chỉ mang nghĩa đen (kinh nghiệm cụ thể) — tránh suy diễn sang nghĩa bóng về con người.')
+    add(
+      'nuance',
+      'over_interpretation',
+      'Suy diễn sang nghĩa bóng',
+      'Câu này chỉ mô tả một kinh nghiệm cụ thể, không mang hàm ý về tính cách con người.',
+    )
   }
 
   let fluency: number
@@ -136,19 +162,13 @@ export function gradeAnswer(idiom: Idiom, answer: string): { scores: CriterionSc
   else if (wordCount < 8) fluency = 3
   else if (wordCount <= 80) fluency = 4 + (/^[A-ZÀ-Ỹ"“]/u.test(ans) && /[.!?]$/.test(ans) ? 1 : 0)
   else fluency = 4
-  if (fluency < 4 && wordCount > 0) improvements.push('Diễn đạt thành câu hoàn chỉnh, rõ ràng và mạch lạc hơn.')
-
-  const completeness = clamp5(clamp01(recall / 0.5) * 5)
-  const missing = missingKeywords(ref, ansSet)
-  if (completeness <= 3 && accuracy >= 1 && !errorTypes.includes('too_short')) {
-    errorTypes.push('missing_points')
-    improvements.push('Bổ sung thêm các ý còn thiếu so với nghĩa chuẩn.')
+  if (fluency < 4 && !tooShort && wordCount > 0) {
+    add('fluency', 'unclear_wording', 'Diễn đạt chưa thành câu', 'Viết thành câu hoàn chỉnh có chủ ngữ, vị ngữ để ý được rõ ràng.')
   }
 
-  const hardWords = idiom.traits.includes('sino_vietnamese') || idiom.traits.includes('uncommon_vocab')
-  if (hardWords && accuracy <= 2 && idiom.glossary?.length) {
-    errorTypes.push('lexical_gap')
-    improvements.unshift(`Tra nghĩa các từ: ${idiom.glossary.map((g) => `“${g.term}”`).join(', ')} trước khi giải nghĩa cả câu.`)
+  const completeness = clamp5(clamp01(recall / 0.5) * 5)
+  if (completeness <= 3 && accuracy >= 1 && !tooShort) {
+    add('completeness', 'missing_points', 'Còn thiếu ý', 'Bài làm mới bao quát một phần các ý có trong nghĩa chuẩn.')
   }
 
   // VIVID judge rule: a core-meaning score of 0 forces the overall score to 0
@@ -160,15 +180,14 @@ export function gradeAnswer(idiom: Idiom, answer: string): { scores: CriterionSc
   if (nuance >= 4) strengths.push('Thể hiện được sắc thái, thái độ của câu.')
   if (fluency >= 4) strengths.push('Diễn đạt rõ ràng, mạch lạc.')
   if (completeness >= 4) strengths.push('Bao quát đầy đủ các ý chính.')
-  if (strengths.length === 0 && accuracy >= 2) strengths.push('Đã có hướng hiểu đúng một phần ý nghĩa.')
 
   const SUMMARY = [
-    'Sai lệch hoàn toàn về ý nghĩa cốt lõi của câu.',
-    'Chưa đúng. Ý nghĩa bạn đưa ra còn khác xa so với nghĩa chuẩn.',
-    'Chưa đạt. Bài làm mới chạm đến một phần ý nghĩa của câu.',
-    'Khá. Bạn đã nắm được ý chính nhưng còn thiếu một số ý hoặc sắc thái.',
-    'Rất tốt! Bài làm nắm đúng ý chính, chỉ cần bổ sung thêm một chút.',
-    'Xuất sắc! Bạn đã giải nghĩa chính xác và đầy đủ.',
+    'Ý nghĩa cốt lõi chưa đúng, nên điểm tổng là 0.',
+    'Ý nghĩa bạn đưa ra còn khác xa nghĩa chuẩn.',
+    'Bài làm mới chạm tới một phần ý nghĩa của câu.',
+    'Đã nắm được ý chính, còn thiếu một số ý hoặc sắc thái.',
+    'Nắm đúng ý chính, chỉ cần bổ sung thêm chút ít.',
+    'Giải nghĩa chính xác và đầy đủ.',
   ]
 
   return {
@@ -176,10 +195,46 @@ export function gradeAnswer(idiom: Idiom, answer: string): { scores: CriterionSc
     overall,
     feedback: {
       summary: SUMMARY[overall],
+      comments: {
+        accuracy:
+          accuracy >= 4 ? 'Nắm đúng ý chính của câu.' : accuracy >= 2 ? 'Mới chạm tới một phần ý chính.' : 'Ý chính khác với nghĩa chuẩn.',
+        nuance: pragmatic
+          ? nuance >= 4
+            ? 'Đã thể hiện được thái độ của câu.'
+            : 'Chưa thể hiện thái độ khen, chê hay khuyên răn của câu.'
+          : nuance >= 4
+            ? 'Phù hợp với cách dùng thông thường của câu.'
+            : 'Chưa nêu được ngữ cảnh người ta dùng câu này.',
+        fluency: fluency >= 4 ? 'Câu văn rõ ràng, mạch lạc.' : 'Nên viết thành câu hoàn chỉnh, rõ ý.',
+        completeness:
+          completeness >= 4 ? 'Bao quát đủ các ý chính.' : completeness >= 2 ? 'Còn thiếu một số ý.' : 'Thiếu nhiều ý chính.',
+      },
+      issues,
       strengths,
-      improvements: [...new Set(improvements)],
-      errorTypes: [...new Set(errorTypes)],
-      missingKeywords: overall >= 5 ? [] : missing,
+      missingKeywords: overall >= 5 ? [] : missingKeywords(ref, ansSet),
     },
   }
+}
+
+export function hintFor(idiom: Idiom, level: HintLevel): GradingHint {
+  if (level === 1) {
+    if (idiom.traits.includes('pragmatic')) {
+      return { level, text: 'Người xưa nói câu này để khen hay để chê? Họ đang nhắm tới kiểu người hay hành vi nào?' }
+    }
+    if (idiom.traits.includes('literal') || idiom.traits.includes('folk_knowledge')) {
+      return {
+        level,
+        text: 'Câu này ghi lại một kinh nghiệm cụ thể trong đời sống (làm ruộng, thời tiết, nấu ăn…). Hãy hình dung lúc người ta nói câu này.',
+      }
+    }
+    return { level, text: 'Hình ảnh trong câu tượng trưng cho điều gì ở con người hoặc cuộc sống?' }
+  }
+  if (level === 2) {
+    if (idiom.glossary?.length) {
+      return { level, text: `Nghĩa của từ khó: ${idiom.glossary.map((g) => `${g.term} – ${g.meaning}`).join('; ')}.` }
+    }
+    return { level, text: `Câu thuộc nhóm “${TOPICS[idiom.topic].label}”: ${TOPICS[idiom.topic].description.toLowerCase()}.` }
+  }
+  const opening = idiom.explanation.split(/[,.;:]/)[0].split(' ').slice(0, 8).join(' ')
+  return { level, text: `Câu trả lời có thể bắt đầu như sau: “${opening}…”` }
 }

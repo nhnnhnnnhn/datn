@@ -1,174 +1,28 @@
 import type { Api } from '@/api/types'
 import { ApiError, setToken } from '@/api/client'
-import type {
-  Deck,
-  DeckSource,
-  Flashcard,
-  GradingResult,
-  Idiom,
-  ProgressSummary,
-  Quiz,
-  QuizResult,
-  ReviewRating,
-  SrsState,
-  TopicId,
-  User,
-} from '@/types'
-import { TOPICS, TOPIC_IDS, TRAITS, TRAIT_IDS } from '@/lib/constants'
+import type { Deck, DeckSource, Flashcard, GradingResult, Idiom, IdiomStats, MasteryLevel, ProgressSummary, Quiz, QuizResult, User } from '@/types'
+import { MASTERY_LEVELS, TOPICS, TOPIC_IDS, TRAITS, TRAIT_IDS } from '@/lib/constants'
+import { masteryFromScore } from '@/lib/mastery'
 import { isDue, isLearned, isNewCard, newSrs, schedule } from '@/lib/srs'
-import { normalize, toDateKey } from '@/lib/text'
+import { normalize, sameAnswer, toDateKey } from '@/lib/text'
 import { createLogger } from '@/lib/logger'
 import { IDIOMS } from './idioms.data'
-import { gradeAnswer } from './grader'
+import { gradeAnswer, hintFor } from './grader'
 import { generateQuestions } from './quizGen'
-import { delay, pick, read, remove, seededRandom, shuffle, uid, write } from './store'
+import { classroom } from './classroom'
+import { DAY, avg, bestScores, byId, currentUser, idiomOrThrow, loadDb, saveDb, withRole, type Db, type StoredCard, type StoredDeck } from './db'
+import { delay, pick, read, remove, shuffle, uid, write } from './store'
 
-interface StoredDeck {
-  id: string
-  name: string
-  description: string
-  source: DeckSource
-  topic?: TopicId
-  createdAt: string
-}
+const ALPHABETICAL = [...IDIOMS].sort((a, b) => a.phrase.localeCompare(b.phrase, 'vi'))
+const SEARCH_INDEX = IDIOMS.map((i) => ({ phrase: ` ${normalize(i.phrase)} `, explanation: normalize(i.explanation) }))
 
-interface StoredCard {
-  id: string
-  deckId: string
-  idiomId: number
-  srs: SrsState
-}
-
-interface ReviewLog {
-  cardId: string
-  idiomId: number
-  rating: ReviewRating
-  at: string
-}
-
-interface Db {
-  attempts: GradingResult[]
-  quizzes: Quiz[]
-  quizResults: QuizResult[]
-  decks: StoredDeck[]
-  cards: StoredCard[]
-  reviews: ReviewLog[]
-}
-
-const DAY = 86_400_000
-const byId = new Map(IDIOMS.map((i) => [i.id, i]))
-
-function idiomOrThrow(id: number): Idiom {
-  const idiom = byId.get(id)
-  if (!idiom) throw new ApiError(404, 'Không tìm thấy thành ngữ')
-  return idiom
-}
-
-function currentUser(): User {
-  const user = read<User | null>('session', null)
-  if (!user) throw new ApiError(401, 'Bạn cần đăng nhập')
-  return user
-}
-
-function loadDb(): Db {
-  const user = currentUser()
-  const existing = read<Db | null>(`db:${user.id}`, null)
-  if (existing) return existing
-  const db = seedDb(user.id)
-  saveDb(db)
-  return db
-}
-
-function saveDb(db: Db) {
-  write(`db:${currentUser().id}`, db)
-}
-
-// Fake study history so the stats pages have data on first login. Scores are lower for pragmatic and
-// folk-knowledge idioms, mirroring the difficulty trend reported in the VIVID paper.
-function seedDb(userId: string): Db {
-  const rng = seededRandom(userId)
-  const now = Date.now()
-  const db: Db = { attempts: [], quizzes: [], quizResults: [], decks: [], cards: [], reviews: [] }
-
-  for (const topic of TOPIC_IDS) {
-    const deckId = `topic-${topic}`
-    db.decks.push({
-      id: deckId,
-      name: TOPICS[topic].label,
-      description: TOPICS[topic].description,
-      source: 'topic',
-      topic,
-      createdAt: new Date(now - 30 * DAY).toISOString(),
-    })
-    for (const idiom of IDIOMS.filter((i) => i.topic === topic)) {
-      db.cards.push({ id: `c-${idiom.id}`, deckId, idiomId: idiom.id, srs: newSrs(new Date(now - 30 * DAY)) })
-    }
-  }
-  db.decks.push({
-    id: 'saved',
-    name: 'Câu đã lưu',
-    description: 'Những câu bạn lưu từ kho tra cứu và bài luyện giải nghĩa',
-    source: 'saved',
-    createdAt: new Date(now - 30 * DAY).toISOString(),
-  })
-
-  const penalty: Record<string, number> = {
-    pragmatic: 0.8,
-    folk_knowledge: 0.9,
-    literal: 0.6,
-    uncommon_vocab: 0.5,
-    sino_vietnamese: 0.25,
-  }
-
-  for (let d = 24; d >= 1; d--) {
-    if (d > 5 && rng() < 0.35) continue
-    const dayStart = new Date(now - d * DAY)
-    dayStart.setHours(8, 0, 0, 0)
-    const at = () => new Date(dayStart.getTime() + Math.floor(rng() * 12 * 3600_000)).toISOString()
-
-    const n = 1 + Math.floor(rng() * 3)
-    for (let k = 0; k < n; k++) {
-      const idiom = pick(IDIOMS, rng)
-      const base = 3.7 - idiom.traits.reduce((s, t) => s + (penalty[t] ?? 0), 0) + (24 - d) * 0.03 + (rng() * 2 - 1)
-      const overall = Math.max(0, Math.min(5, Math.round(base)))
-      const jitter = () => Math.max(0, Math.min(5, overall + Math.round(rng() * 2 - 1)))
-      db.attempts.push({
-        id: uid(),
-        idiomId: idiom.id,
-        phrase: idiom.phrase,
-        answer: '(Bài làm trong dữ liệu demo)',
-        scores: { accuracy: overall, nuance: jitter(), fluency: Math.max(3, jitter()), completeness: jitter() },
-        overall,
-        feedback: { summary: '', strengths: [], improvements: [], errorTypes: [], missingKeywords: [] },
-        reference: idiom.explanation,
-        createdAt: at(),
-      })
-    }
-
-    if (rng() < 0.35) {
-      const total = 10
-      db.quizResults.push({
-        id: uid(),
-        quizId: uid(),
-        correct: Math.min(total, Math.round(5 + rng() * 3 + (24 - d) * 0.08)),
-        total,
-        durationSec: 120 + Math.floor(rng() * 200),
-        createdAt: at(),
-      })
-    }
-
-    if (rng() < 0.6) {
-      for (const card of shuffle(db.cards, rng).slice(0, 2 + Math.floor(rng() * 4))) {
-        const rating: ReviewRating = rng() < 0.2 ? 'again' : rng() < 0.6 ? 'good' : 'easy'
-        const when = at()
-        card.srs = schedule(card.srs, rating, new Date(when))
-        db.reviews.push({ cardId: card.id, idiomId: card.idiomId, rating, at: when })
-      }
-    }
-  }
-
-  db.attempts.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-  return db
+// Lower is better: phrase prefix, whole-word match in the phrase, partial phrase match, then meaning
+function searchRank(entry: (typeof SEARCH_INDEX)[number], q: string): number {
+  if (entry.phrase.startsWith(` ${q}`)) return 0
+  if (entry.phrase.includes(` ${q} `)) return 1
+  if (entry.phrase.includes(q)) return 2
+  if (entry.explanation.includes(q)) return 3
+  return -1
 }
 
 function deckView(db: Db, deck: StoredDeck): Deck {
@@ -185,47 +39,39 @@ function deckView(db: Db, deck: StoredDeck): Deck {
 
 const cardView = (c: StoredCard): Flashcard => ({ ...c, idiom: idiomOrThrow(c.idiomId) })
 
-function avg(nums: number[]): number | null {
-  return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null
+function validateCredentials(email: string, password: string) {
+  if (!email.includes('@')) throw new ApiError(400, 'Email không hợp lệ')
+  if (password.length < 6) throw new ApiError(400, 'Mật khẩu cần tối thiểu 6 ký tự')
 }
 
-function bestScores(db: Db): Map<number, number> {
-  const best = new Map<number, number>()
-  for (const a of db.attempts) best.set(a.idiomId, Math.max(best.get(a.idiomId) ?? 0, a.overall))
-  return best
+function startSession(user: User) {
+  write('session', user)
+  return { token: `mock-${user.id}`, user }
 }
 
 const rawMockApi: Api = {
   auth: {
     async login(email, password) {
       await delay(400)
-      if (!email.includes('@')) throw new ApiError(400, 'Email không hợp lệ')
-      if (password.length < 6) throw new ApiError(400, 'Mật khẩu cần tối thiểu 6 ký tự')
+      validateCredentials(email, password)
       const users = read<Record<string, User>>('users', {})
       const key = email.trim().toLowerCase()
-      const user: User = users[key] ?? {
-        id: uid(),
-        name: key.split('@')[0],
-        email: key,
-        dailyGoal: 10,
-        createdAt: new Date().toISOString(),
-      }
-      write('users', { ...users, [key]: user })
-      write('session', user)
-      return { token: `mock-${user.id}`, user }
+      const user = users[key]
+      if (!user) throw new ApiError(401, 'Email chưa được đăng ký')
+      return startSession(withRole(user))
     },
-    async register(name, email, password) {
+    async register(name, email, password, role) {
       await delay(500)
       if (!name.trim()) throw new ApiError(400, 'Vui lòng nhập họ tên')
-      if (!email.includes('@')) throw new ApiError(400, 'Email không hợp lệ')
-      if (password.length < 6) throw new ApiError(400, 'Mật khẩu cần tối thiểu 6 ký tự')
+      validateCredentials(email, password)
       const users = read<Record<string, User>>('users', {})
       const key = email.trim().toLowerCase()
       if (users[key]) throw new ApiError(409, 'Email đã được đăng ký')
-      const user: User = { id: uid(), name: name.trim(), email: key, dailyGoal: 10, createdAt: new Date().toISOString() }
+      const user: User = { id: uid(), name: name.trim(), email: key, role, dailyGoal: 10, createdAt: new Date().toISOString() }
       write('users', { ...users, [key]: user })
-      write('session', user)
-      return { token: `mock-${user.id}`, user }
+      // Demo convenience: new students start inside the seeded class so assignments show up
+      if (role === 'student') classroom.enroll(user.id)
+      return startSession(user)
     },
     async me() {
       await delay(100)
@@ -243,26 +89,15 @@ const rawMockApi: Api = {
   },
 
   idioms: {
-    async list({ q, topic, trait, kind, page = 1, pageSize = 12 }) {
+    async list({ q, topic, trait, page = 1, pageSize = 20 }) {
       await delay(200)
       const nq = q ? normalize(q) : ''
-      let items = IDIOMS.filter(
-        (i) =>
-          (!topic || i.topic === topic) &&
-          (!trait || i.traits.includes(trait)) &&
-          (!kind || i.kind === kind) &&
-          (!nq || normalize(i.phrase).includes(nq) || normalize(i.explanation).includes(nq)),
+      const ranked = IDIOMS.map((idiom, i) => ({ idiom, rank: nq ? searchRank(SEARCH_INDEX[i], nq) : 0 })).filter(
+        ({ idiom, rank }) => rank >= 0 && (!topic || idiom.topic === topic) && (!trait || idiom.traits.includes(trait)),
       )
-      items = [...items].sort((a, b) => {
-        if (nq) {
-          const pa = normalize(a.phrase).includes(nq) ? 0 : 1
-          const pb = normalize(b.phrase).includes(nq) ? 0 : 1
-          if (pa !== pb) return pa - pb
-        }
-        return a.phrase.localeCompare(b.phrase, 'vi')
-      })
+      ranked.sort((a, b) => a.rank - b.rank || a.idiom.phrase.localeCompare(b.idiom.phrase, 'vi'))
       const start = (page - 1) * pageSize
-      return { items: items.slice(start, start + pageSize), total: items.length, page, pageSize }
+      return { items: ranked.slice(start, start + pageSize).map((r) => r.idiom), total: ranked.length, page, pageSize }
     },
     async get(id) {
       await delay(150)
@@ -270,8 +105,7 @@ const rawMockApi: Api = {
     },
     async daily() {
       await delay(150)
-      const dayIndex = Math.floor(Date.now() / DAY)
-      return IDIOMS[dayIndex % IDIOMS.length]
+      return IDIOMS[Math.floor(Date.now() / DAY) % IDIOMS.length]
     },
     async random(query) {
       await delay(150)
@@ -279,6 +113,24 @@ const rawMockApi: Api = {
       if (query?.topic) pool = pool.filter((i) => i.topic === query.topic)
       if (query?.trait) pool = pool.filter((i) => i.traits.includes(query.trait!))
       return pick(pool.length ? pool : IDIOMS)
+    },
+    async stats() {
+      await delay(150)
+      const byTopic = Object.fromEntries(TOPIC_IDS.map((t) => [t, IDIOMS.filter((i) => i.topic === t).length])) as IdiomStats['byTopic']
+      const byTrait = Object.fromEntries(TRAIT_IDS.map((t) => [t, IDIOMS.filter((i) => i.traits.includes(t)).length])) as IdiomStats['byTrait']
+      return {
+        total: IDIOMS.length,
+        byTopic,
+        byTrait,
+        withGlossary: IDIOMS.filter((i) => i.glossary?.length).length,
+        withCitation: IDIOMS.filter((i) => i.citation).length,
+      }
+    },
+    async neighbors(id) {
+      await delay(120)
+      const index = ALPHABETICAL.findIndex((i) => i.id === id)
+      if (index < 0) throw new ApiError(404, 'Không tìm thấy thành ngữ')
+      return ALPHABETICAL.slice(Math.max(0, index - 3), index + 4)
     },
   },
 
@@ -301,6 +153,10 @@ const rawMockApi: Api = {
       saveDb(db)
       return result
     },
+    async hint(idiomId, level) {
+      await delay(500)
+      return hintFor(idiomOrThrow(idiomId), level)
+    },
     async history(limit = 20) {
       await delay(150)
       return [...loadDb().attempts].reverse().slice(0, limit)
@@ -311,10 +167,14 @@ const rawMockApi: Api = {
     async generate(config) {
       await delay(700)
       const db = loadDb()
+      const pool = config.deckId
+        ? db.cards.filter((c) => c.deckId === config.deckId).map((c) => idiomOrThrow(c.idiomId))
+        : IDIOMS
+      if (pool.length === 0) throw new ApiError(400, 'Bộ thẻ chưa có câu nào')
       const quiz: Quiz = {
         id: uid(),
         config,
-        questions: generateQuestions(config, IDIOMS),
+        questions: generateQuestions(config, pool, IDIOMS),
         createdAt: new Date().toISOString(),
       }
       db.quizzes = [...db.quizzes.slice(-4), quiz]
@@ -327,7 +187,7 @@ const rawMockApi: Api = {
       const quiz = db.quizzes.find((q) => q.id === quizId)
       if (!quiz) throw new ApiError(404, 'Không tìm thấy bài quiz')
       const correct = quiz.questions.filter(
-        (q) => answers.find((a) => a.questionId === q.id)?.selectedIndex === q.answerIndex,
+        (q) => sameAnswer(answers.find((a) => a.questionId === q.id)?.selected ?? [], q.answer),
       ).length
       const result: QuizResult = {
         id: uid(),
@@ -397,17 +257,15 @@ const rawMockApi: Api = {
       if (config.fromWeak) {
         const best = bestScores(db)
         pool = IDIOMS.filter((i) => best.has(i.id) && best.get(i.id)! <= 3)
-        criteria = 'những câu bạn đạt điểm thấp khi luyện giải nghĩa'
+        criteria = 'những câu bạn đạt điểm thấp khi luyện viết'
       } else {
         pool = IDIOMS.filter(
           (i) => (!config.topic || i.topic === config.topic) && (!config.trait || i.traits.includes(config.trait)),
         )
-        criteria = [
-          config.topic && `chủ đề “${TOPICS[config.topic].label}”`,
-          config.trait && `đặc trưng “${TRAITS[config.trait].label}”`,
-        ]
-          .filter(Boolean)
-          .join(', ') || 'toàn bộ kho'
+        criteria =
+          [config.topic && `chủ đề “${TOPICS[config.topic].label}”`, config.trait && `đặc trưng “${TRAITS[config.trait].label}”`]
+            .filter(Boolean)
+            .join(', ') || 'toàn bộ kho'
       }
       if (pool.length === 0) throw new ApiError(400, 'Không có câu nào phù hợp với tiêu chí đã chọn')
 
@@ -418,10 +276,10 @@ const rawMockApi: Api = {
           (config.fromWeak
             ? 'Ôn câu còn yếu'
             : config.topic
-              ? `${TOPICS[config.topic].label} (AI)`
+              ? `${TOPICS[config.topic].label} (tự tạo)`
               : config.trait
-                ? `${TRAITS[config.trait].label} (AI)`
-                : 'Tổng hợp (AI)'),
+                ? `${TRAITS[config.trait].label} (tự tạo)`
+                : 'Tổng hợp (tự tạo)'),
         description: `Tạo tự động từ ${criteria}.`,
         source: 'ai',
         createdAt: new Date().toISOString(),
@@ -448,7 +306,7 @@ const rawMockApi: Api = {
       await delay(200)
       const db = loadDb()
       const deck = db.decks.find((d) => d.id === id)
-      if (!deck || deck.source !== 'ai') throw new ApiError(400, 'Chỉ xoá được bộ thẻ do AI tạo')
+      if (!deck || deck.source !== 'ai') throw new ApiError(400, 'Chỉ xoá được bộ thẻ tự tạo')
       db.decks = db.decks.filter((d) => d.id !== id)
       db.cards = db.cards.filter((c) => c.deckId !== id)
       saveDb(db)
@@ -498,8 +356,11 @@ const rawMockApi: Api = {
       })
 
       const byTrait = TRAIT_IDS.map((trait) => {
+        const idioms = IDIOMS.filter((i) => i.traits.includes(trait))
         const scores = db.attempts.filter((a) => byId.get(a.idiomId)?.traits.includes(trait)).map((a) => a.overall)
-        return { trait, attempts: scores.length, avgScore: avg(scores) }
+        const levels = Object.fromEntries(MASTERY_LEVELS.map((l) => [l, 0])) as Record<MasteryLevel, number>
+        for (const idiom of idioms) levels[masteryFromScore(best.get(idiom.id) ?? null)]++
+        return { trait, total: idioms.length, attempts: scores.length, avgScore: avg(scores), levels }
       })
 
       const scoreHistory = Array.from({ length: 30 }, (_, i) => {
@@ -544,6 +405,80 @@ const rawMockApi: Api = {
         activity,
         weakIdioms,
       }
+    },
+  },
+
+  classes: {
+    async list() {
+      await delay(200)
+      return classroom.listClasses(currentUser())
+    },
+    async get(id) {
+      await delay(120)
+      return classroom.getClass(currentUser(), id)
+    },
+    async create(name) {
+      await delay(300)
+      if (!name.trim()) throw new ApiError(400, 'Vui lòng nhập tên lớp')
+      return classroom.createClass(currentUser(), name)
+    },
+    async join(code) {
+      await delay(300)
+      return classroom.joinClass(currentUser(), code)
+    },
+    async students(id) {
+      await delay(200)
+      return classroom.students(currentUser(), id)
+    },
+    async report(id) {
+      await delay(300)
+      return classroom.report(currentUser(), id)
+    },
+  },
+
+  assignments: {
+    async list(classId) {
+      await delay(200)
+      return classroom.listAssignments(currentUser(), classId)
+    },
+    async get(id) {
+      await delay(120)
+      return classroom.getAssignment(currentUser(), id)
+    },
+    async create(input) {
+      await delay(400)
+      return classroom.createAssignment(currentUser(), input)
+    },
+    async submissions(id) {
+      await delay(250)
+      return classroom.submissions(currentUser(), id)
+    },
+    async mySubmission(id) {
+      await delay(150)
+      return classroom.mySubmission(currentUser(), id)
+    },
+    async submit(id, answers) {
+      await delay(1500)
+      const user = currentUser()
+      const submission = classroom.submit(user, id, answers)
+      const db = loadDb()
+      for (const item of submission.items) {
+        db.attempts.push({
+          id: uid(),
+          idiomId: item.idiomId,
+          phrase: item.phrase,
+          answer: item.answer,
+          ...gradeAnswer(idiomOrThrow(item.idiomId), item.answer),
+          reference: idiomOrThrow(item.idiomId).explanation,
+          createdAt: submission.submittedAt ?? new Date().toISOString(),
+        })
+      }
+      saveDb(db)
+      return submission
+    },
+    async review(submissionId, review) {
+      await delay(300)
+      return classroom.review(currentUser(), submissionId, review.score, review.comment)
     },
   },
 }

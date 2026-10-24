@@ -1,11 +1,11 @@
 import type { Idiom, QuestionType, QuizConfig, QuizQuestion } from '@/types'
-import { TOPICS, TOPIC_IDS } from '@/lib/constants'
+import { TOPICS, TOPIC_IDS, TRAITS, TRAIT_IDS } from '@/lib/constants'
 import { firstSentence, normalize } from '@/lib/text'
 import { pick, shuffle, uid } from './store'
 
 const WEAK_WORDS = new Set(['thi', 'co', 'la', 'ma', 'cung', 'nhu', 'mot', 'nao', 'ay', 'cho', 'hon'])
 
-function withOptions(correct: string, distractors: string[]): { options: string[]; answerIndex: number } {
+function withOptions(correct: string, distractors: string[]): { options: string[]; answer: number[] } {
   const seen = new Set([normalize(correct)])
   const unique: string[] = []
   for (const d of distractors) {
@@ -17,7 +17,7 @@ function withOptions(correct: string, distractors: string[]): { options: string[
     if (unique.length === 3) break
   }
   const options = shuffle([correct, ...unique])
-  return { options, answerIndex: options.indexOf(correct) }
+  return { options, answer: [options.indexOf(correct)] }
 }
 
 function buildQuestion(idiom: Idiom, type: QuestionType, all: Idiom[]): QuizQuestion | null {
@@ -68,6 +68,17 @@ function buildQuestion(idiom: Idiom, type: QuestionType, all: Idiom[]): QuizQues
         ),
       }
     }
+    case 'traits':
+      // Mirrors VIVID's trait classification task: fixed option order, every applicable trait, exact match
+      return {
+        ...base,
+        type,
+        prompt: 'Câu sau mang những đặc trưng ngôn ngữ nào? Chọn tất cả đáp án đúng.',
+        highlight: idiom.phrase,
+        options: [...TRAIT_IDS.map((t) => TRAITS[t].label), 'Không mang đặc trưng nào'],
+        answer: idiom.traits.length ? TRAIT_IDS.flatMap((t, i) => (idiom.traits.includes(t) ? [i] : [])) : [TRAIT_IDS.length],
+        explanation: `“${idiom.phrase}” được gán nhãn trong VIVID: ${idiom.traits.map((t) => TRAITS[t].label.toLowerCase()).join(', ') || 'không có đặc trưng nào'}.`,
+      }
     case 'topic': {
       const correct = TOPICS[idiom.topic].label
       const distractors = shuffle(TOPIC_IDS.filter((t) => t !== idiom.topic && t !== 'other')).map((t) => TOPICS[t].label)
@@ -82,11 +93,11 @@ function buildQuestion(idiom: Idiom, type: QuestionType, all: Idiom[]): QuizQues
   }
 }
 
-export function generateQuestions(config: QuizConfig, all: Idiom[]): QuizQuestion[] {
-  let pool = all
+export function generateQuestions(config: QuizConfig, candidates: Idiom[], all: Idiom[]): QuizQuestion[] {
+  let pool = candidates
   if (config.topic) pool = pool.filter((i) => i.topic === config.topic)
   if (config.trait) pool = pool.filter((i) => i.traits.includes(config.trait!))
-  if (pool.length === 0) pool = all
+  if (pool.length === 0) pool = candidates
 
   const types: QuestionType[] = config.types.length ? config.types : ['meaning']
   const chosen = shuffle(pool).slice(0, Math.min(config.count, pool.length))
