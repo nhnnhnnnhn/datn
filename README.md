@@ -39,4 +39,4 @@ cp backend/.env.example backend/.env
 docker compose up --build
 ```
 
-Pushes to `main` are deployed automatically over Tailscale; see [docs/deployment.md](docs/deployment.md).
+Pushes to `dev` are deployed automatically over Tailscale; see [docs/deployment.md](docs/deployment.md).
