@@ -31,6 +31,12 @@ export class ApiError extends Error {
   }
 }
 
+let onUnauthorized: (() => void) | null = null
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  onUnauthorized = handler
+}
+
 interface ValidationIssue {
   loc?: (string | number)[]
   msg?: string
@@ -95,6 +101,11 @@ export async function request<T>(
     }
     const { message, fields } = errorMessage(data, res.statusText)
     if (fields) log.warn(`invalid request ${method} ${path} req=${requestId}`, { fields })
+    if (res.status === 401 && token && getToken() === token) {
+      log.info(`session rejected, signing out req=${requestId}`)
+      setToken(null)
+      onUnauthorized?.()
+    }
     throw new ApiError(res.status, message, requestId)
   }
 

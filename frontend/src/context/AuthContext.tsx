@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useQueryClient } from '@tanstack/react-query'
 import type { AuthResponse, Role, User } from '@/types'
 import { api } from '@/api'
-import { getToken, setToken } from '@/api/client'
+import { getToken, setToken, setUnauthorizedHandler } from '@/api/client'
 import { createLogger } from '@/lib/logger'
 import { logFailure } from '@/lib/logFailure'
 
@@ -37,6 +37,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      log.info('session expired, signed out')
+      queryClient.clear()
+      setUser(null)
+    })
+    return () => setUnauthorizedHandler(null)
+  }, [queryClient])
 
   const accept = useCallback(
     (res: AuthResponse) => {
