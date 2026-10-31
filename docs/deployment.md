@@ -1,10 +1,11 @@
 # Deployment
 
-Every push to `main` runs CI, builds the frontend and backend images, pushes them to GHCR and rolls
+Every push to `dev` runs CI, builds the frontend and backend images, pushes them to GHCR and rolls
 them out on the server over Tailscale. The app is published to the internet with Tailscale Funnel.
+`main` is reserved for production and does not deploy yet.
 
 ```
-push main ─▶ ci (frontend test+build, backend ruff+pytest)
+push dev ─▶ ci (frontend test+build, backend ruff+pytest)
           ─▶ build (ghcr.io/nhnnhnnnhn/datn-{frontend,backend}:<sha>, :latest)
           ─▶ deploy: runner joins the tailnet as tag:ci (ephemeral)
                      ─ Tailscale SSH ─▶ server: docker compose pull && up --wait
@@ -92,7 +93,7 @@ tailscale funnel status
 | Variable | `VITE_USE_MOCK` | `true` (default) until the backend API is ready, then `false` |
 
 `VITE_USE_MOCK` is baked into the frontend image at build time, so changing it takes effect on the
-next deploy. Optionally add required reviewers to the `production` environment
+next deploy. Optionally add required reviewers to the `dev` environment
 (**Settings → Environments**) to gate deploys.
 
 Images are pushed with the workflow's `GITHUB_TOKEN`, and the server logs in to GHCR with that same

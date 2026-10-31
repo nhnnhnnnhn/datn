@@ -2,14 +2,14 @@ name: deploy
 
 on:
   push:
-    branches: [main]
+    branches: [dev]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: deploy-production
+  group: deploy-dev
   cancel-in-progress: false
 
 env:
@@ -56,7 +56,7 @@ jobs:
       contents: read
       packages: read
     environment:
-      name: production
+      name: dev
       url: ${{ vars.APP_URL }}
     env:
       TARGET: ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}
