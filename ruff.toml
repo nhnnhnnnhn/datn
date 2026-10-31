@@ -1,0 +1,9 @@
+target-version = "py311"
+line-length = 100
+extend-exclude = ["frontend", ".specify", "node_modules"]
+
+[lint]
+select = ["E", "W", "F", "I", "N", "B", "UP", "SIM", "RUF"]
+
+[lint.isort]
+known-first-party = ["app", "ai"]
