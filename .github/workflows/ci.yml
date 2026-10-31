@@ -42,4 +42,5 @@ jobs:
         run: |
           uv venv
           uv pip install -r requirements.txt
-          uv run pytest
+          # Exit code 5 means no tests were collected: fine until the backend has tests
+          uv run pytest || [ $? -eq 5 ]
