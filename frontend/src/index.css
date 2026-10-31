@@ -1,0 +1,71 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Be Vietnam Pro', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Noto Serif', Georgia, serif;
+
+  /* lacquer red */
+  --color-brand-50: #fdf4f3;
+  --color-brand-100: #fbe6e3;
+  --color-brand-200: #f7d0cb;
+  --color-brand-300: #f0ada5;
+  --color-brand-400: #e57f73;
+  --color-brand-500: #d65649;
+  --color-brand-600: #b93a2e;
+  --color-brand-700: #9b2f25;
+  --color-brand-800: #802a22;
+  --color-brand-900: #6b2821;
+
+  --color-correct-bg: #e8f5e9;
+  --color-correct-ink: #1b5e20;
+  --color-correct: #2e7d32;
+  --color-wrong-bg: #fdecea;
+  --color-wrong-ink: #8c1d18;
+  --color-wrong: #c62828;
+
+  --animate-sheet-up: sheet-up 0.18s ease-out;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  @apply bg-white font-sans text-stone-800 antialiased;
+}
+
+.flip-scene {
+  perspective: 1200px;
+}
+.flip-card {
+  transform-style: preserve-3d;
+  transition: transform 0.4s cubic-bezier(0.4, 0.2, 0.2, 1);
+}
+.flip-card.is-flipped {
+  transform: rotateY(180deg);
+}
+.flip-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flip-back {
+  transform: rotateY(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-card {
+    transition: none;
+  }
+  .animate-sheet-up {
+    animation: none;
+  }
+}
