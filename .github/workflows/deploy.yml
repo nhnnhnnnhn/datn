@@ -21,6 +21,8 @@ jobs:
 
   build:
     needs: ci
+    # workflow_dispatch can target any branch; only main may reach production
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -43,6 +45,7 @@ jobs:
           tags: |
             ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:${{ github.sha }}
             ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:latest
+          labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           # Ignored by the backend Dockerfile, which declares no build args
           build-args: |
             VITE_USE_MOCK=${{ vars.VITE_USE_MOCK || 'true' }}
@@ -59,9 +62,19 @@ jobs:
       name: production
       url: ${{ vars.APP_URL }}
     env:
-      TARGET: ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER }}
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      TARGET: ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}
     steps:
+      - name: Check deploy variables
+        run: |
+          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_PATH; do
+            if [ -z "$(printenv "$name")" ]; then
+              echo "::error::Repository variable $name is not set (see docs/deployment.md)"
+              exit 1
+            fi
+          done
       - uses: actions/checkout@v4
       - uses: tailscale/github-action@v4
         with:
@@ -72,7 +85,7 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           printf 'Host %s\n  StrictHostKeyChecking accept-new\n  ConnectTimeout 20\n' \
-            "${{ vars.DEPLOY_HOST }}" >> ~/.ssh/config
+            "$DEPLOY_HOST" >> ~/.ssh/config
       - name: Upload deploy files
         run: |
           ssh "$TARGET" "mkdir -p '$DEPLOY_PATH'"

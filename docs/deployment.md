@@ -13,7 +13,10 @@ internet ─▶ https://<server>.<tailnet>.ts.net (Funnel) ─▶ 127.0.0.1:8080
 ```
 
 Pull requests only run `ci.yml`. The deploy workflow can also be started by hand from the Actions
-tab (`workflow_dispatch`).
+tab (`workflow_dispatch`); started on any branch other than `main`, it runs CI only.
+
+If the new containers do not become healthy within 180 s, `deploy.sh` prints their status and
+logs, rolls back to the previously deployed tag and fails the job.
 
 | File | Purpose |
 |---|---|
