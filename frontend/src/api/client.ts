@@ -31,6 +31,24 @@ export class ApiError extends Error {
   }
 }
 
+interface ValidationIssue {
+  loc?: (string | number)[]
+  msg?: string
+}
+
+// FastAPI sends HTTPException as {detail: string} and request validation (422) as {detail: [{loc, msg}]}
+function errorMessage(data: unknown, fallback: string): { message: string; fields?: string[] } {
+  if (typeof data !== 'object' || data === null) return { message: fallback }
+  const { detail, message } = data as { detail?: unknown; message?: unknown }
+  if (typeof detail === 'string') return { message: detail }
+  if (Array.isArray(detail)) {
+    const fields = (detail as ValidationIssue[]).map((d) => `${(d.loc ?? []).slice(1).join('.') || 'body'}: ${d.msg ?? '?'}`)
+    return { message: 'Dữ liệu gửi lên không hợp lệ', fields }
+  }
+  if (typeof message === 'string') return { message }
+  return { message: fallback }
+}
+
 type Query = Record<string, string | number | boolean | undefined | null>
 
 export async function request<T>(
@@ -69,13 +87,14 @@ export async function request<T>(
   if (!res.ok) {
     if (res.status >= 500) log.error(line)
     else log.warn(line)
-    let message = res.statusText
+    let data: unknown = null
     try {
-      const data = await res.json()
-      message = data.detail ?? data.message ?? message
+      data = await res.json()
     } catch {
       /* non-JSON error body */
     }
+    const { message, fields } = errorMessage(data, res.statusText)
+    if (fields) log.warn(`invalid request ${method} ${path} req=${requestId}`, { fields })
     throw new ApiError(res.status, message, requestId)
   }
 
