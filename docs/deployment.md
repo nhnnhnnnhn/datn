@@ -13,7 +13,8 @@ push dev ─▶ ci (frontend test+build, backend ruff+pytest)
 internet ─▶ https://dev-datn.nhnhn.cloud (Cloudflare) ─▶ :443 NPM ─▶ vivid-learn-frontend:80 ─┐
 internet ─▶ https://<server>.<tailnet>.ts.net (Funnel) ─▶ 127.0.0.1:8080 frontend (nginx) ◀─┘
                                                             └─ /api/ ─▶ backend:8000 ─▶ db
-internet ─▶ <server>.<tailnet>.ts.net:10000 (Funnel, raw TCP) ─▶ 127.0.0.1:15432 db (TLS required)
+internet ─▶ db.nhnhn.cloud:2101 (DNS only, router port forward) ─▶ :15432 db (TLS required)
+internet ─▶ <server>.<tailnet>.ts.net:10000 (Funnel, raw TCP) ─▶ 127.0.0.1:15432 db
 ```
 
 Pull requests only run `ci.yml`. The deploy workflow can also be started by hand from the Actions
@@ -26,8 +27,9 @@ logs, rolls back to the previously deployed tag and fails the job.
 |---|---|
 | `.github/workflows/ci.yml` | Tests and lint; runs on PRs and is called by `deploy.yml` |
 | `.github/workflows/deploy.yml` | CI → build and push images → deploy over Tailscale SSH |
-| `deploy/docker-compose.prod.yml` | Production stack: postgres on `127.0.0.1:${DB_PORT}` (TLS), backend, frontend on `127.0.0.1:${WEB_PORT}` and the NPM network |
+| `deploy/docker-compose.prod.yml` | Production stack: postgres on `:${DB_PORT}` (TLS only), backend, frontend on `127.0.0.1:${WEB_PORT}` and the NPM network |
 | `deploy/deploy.sh` | Runs on the server: pull, `up --wait`, record the tag, prune |
+| `deploy/pg_hba.conf` | Postgres client auth: TCP connections must use TLS and a password |
 | `deploy/.env.example` | Template for the server's `.env` |
 
 ## One-time setup
@@ -128,26 +130,35 @@ frontend also joins NPM's Docker network under the name `vivid-learn-frontend`.
    the zone), because port 80 is not forwarded to the server. Force SSL on.
 4. **GitHub**: set the `APP_URL` variable to `https://dev-datn.nhnhn.cloud`.
 
-The database stays on Funnel: Cloudflare's proxy carries only HTTP(S), and raw TCP needs Spectrum.
+The database cannot go through Cloudflare's proxy (it carries only HTTP(S); raw TCP needs
+Spectrum), so `db.nhnhn.cloud` is DNS only; see below.
 
 ## Remote database access
 
-People outside the tailnet connect straight to Postgres through Funnel on TCP port 10000. Funnel
-relays pick the destination node from the TLS SNI, so a connection must open with a TLS handshake:
-clients use `sslnegotiation=direct` (Postgres 17+ protocol), and Postgres terminates TLS itself
-with its own certificate. Plain-text connections cannot reach the server through Funnel at all.
+Postgres listens on host port 15432 on all interfaces and accepts TCP connections only over TLS
+with a password (`deploy/pg_hba.conf`); the backend connects with `sslmode=require` too. Two ways in
+from outside the tailnet:
+
+- **`db.nhnhn.cloud:2101`** (main): a DNS-only Cloudflare record (`CNAME db → nhnhn.cloud`, grey
+  cloud) to the home IP, and the router forwards TCP 2101 to port 15432 on the server's LAN
+  address. Any Postgres client works with a plain `sslmode=require`.
+- **`mgmt01.tail39b71.ts.net:10000`** (backup): Tailscale Funnel. Funnel relays pick the node from
+  the TLS SNI, so clients must use `sslnegotiation=direct` (Postgres 17+ protocol).
+
+Port 2101 is open to the whole internet and will be scanned: keep every password long and random,
+and restrict the router rule to known source IPs when possible.
 
 ### Server, once (before merging a deploy that enables SSL)
 
-The `db` service fails to start without the certificate, so create it first. Replace the host
-name with the server's MagicDNS name.
+The `db` service fails to start without the certificate, so create it first. The certificate
+names every host clients use.
 
 ```bash
 cd /opt/vivid-learn
-HOST=mgmt01.tail39b71.ts.net
 sudo mkdir -p certs
 sudo openssl req -x509 -newkey rsa:4096 -nodes -days 3650 \
-  -subj "/CN=$HOST" -addext "subjectAltName=DNS:$HOST" \
+  -subj "/CN=db.nhnhn.cloud" \
+  -addext "subjectAltName=DNS:db.nhnhn.cloud,DNS:mgmt01.tail39b71.ts.net" \
   -keyout certs/server.key -out certs/server.crt
 sudo chown 999:999 certs/server.key certs/server.crt   # uid of postgres in the image
 sudo chmod 600 certs/server.key
@@ -181,29 +192,25 @@ ALTER DEFAULT PRIVILEGES FOR ROLE vivid IN SCHEMA public
 ```
 
 For read-only access grant only `SELECT`. Schema changes stay with Alembic migrations run by the
-app. To revoke: `DROP OWNED BY friend; DROP ROLE friend;`. To close the port for everyone:
-`sudo tailscale funnel --tcp=10000 off`.
+app. To revoke: `DROP OWNED BY friend; DROP ROLE friend;`. To close access for everyone: remove the
+router rule and run `sudo tailscale funnel --tcp=10000 off`.
 
 ### Client settings
 
 | Setting | Value |
 |---|---|
-| Host / port | `mgmt01.tail39b71.ts.net` / `10000` |
+| Host / port | `db.nhnhn.cloud` / `2101` |
 | Database / user | `idioms` / the role created above |
-| SSL | `sslmode=verify-full`, `sslrootcert=<path to server.crt>`, `sslnegotiation=direct` |
-
-```bash
-psql "host=mgmt01.tail39b71.ts.net port=10000 dbname=idioms user=friend sslmode=verify-full sslrootcert=server.crt sslnegotiation=direct"
-```
+| SSL | `sslmode=require`, or `sslmode=verify-full` with `sslrootcert=<path to server.crt>` |
 
 ```text
-postgresql://friend:<password>@mgmt01.tail39b71.ts.net:10000/idioms?sslmode=verify-full&sslrootcert=server.crt&sslnegotiation=direct
+jdbc:postgresql://db.nhnhn.cloud:2101/idioms?sslmode=require
+postgresql://friend:<password>@db.nhnhn.cloud:2101/idioms?sslmode=verify-full&sslrootcert=server.crt
 ```
 
-- `psql`, psycopg and other libpq-based clients need libpq 17 or newer (older ones reject
-  `sslnegotiation`).
-- DBeaver and other JDBC clients: driver properties `sslmode=verify-full`,
-  `sslrootcert=<path>`, `sslNegotiation=direct`.
+Through Funnel instead: host `mgmt01.tail39b71.ts.net`, port `10000`, and add
+`sslnegotiation=direct` (`sslNegotiation=direct` for JDBC). libpq-based clients need libpq 17 or
+newer for that option.
 
 ## Operations
 
