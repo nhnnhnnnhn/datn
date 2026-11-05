@@ -9,7 +9,6 @@ import { ErrorMessage } from '@/components/ui/Feedback'
 import { VividRef } from '@/components/idiom/VividRef'
 import { createLogger } from '@/lib/logger'
 import { syllables } from '@/lib/text'
-import { HintLadder } from './HintLadder'
 import { FeedbackPanel } from './FeedbackPanel'
 import { AttemptHistory } from './AttemptHistory'
 
@@ -149,7 +148,6 @@ export function PracticeSession({ idiom, onNext, nextLoading }: { idiom: Idiom; 
             </p>
           </div>
         )}
-        <HintLadder key={idiom.id} idiomId={idiom.id} />
       </aside>
     </div>
   )

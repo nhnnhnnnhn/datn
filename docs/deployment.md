@@ -101,7 +101,9 @@ tailscale funnel status
 | Variable | `VITE_USE_MOCK` | `true` (default) until the backend API is ready, then `false` |
 
 `VITE_USE_MOCK` is baked into the frontend image at build time, so changing it takes effect on the
-next deploy. Optionally add required reviewers to the `dev` environment
+next deploy. With `true`, the built app starts Mock Service Worker (`public/mockServiceWorker.js`)
+and answers `/api/*` in the browser; the page must be served over HTTPS or from localhost for the
+service worker to register. Optionally add required reviewers to the `dev` environment
 (**Settings → Environments**) to gate deploys.
 
 Images are pushed with the workflow's `GITHUB_TOKEN`, and the server logs in to GHCR with that same

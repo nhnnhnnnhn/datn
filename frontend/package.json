@@ -17,7 +17,6 @@
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router": "^7.18.4",
-    "recharts": "^3.10.1",
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
@@ -26,9 +25,15 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^5.2.0",
+    "msw": "^3.0.3",
     "tailwindcss": "^4.3.3",
     "typescript": "~5.9.3",
     "vite": "^7.3.7",
     "vitest": "^4.1.12"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }

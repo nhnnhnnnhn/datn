@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, ClipboardList, Flame, House, Info, Layers, LineChart, PenLine, Search, Users } from 'lucide-react'
+import { BookOpen, ClipboardList, Flame, House, Layers, PenLine, Search, Users } from 'lucide-react'
 import { api } from '@/api'
 import { useAuth } from '@/context/AuthContext'
 import { VIVID } from '@/lib/vivid'
@@ -13,14 +13,11 @@ const STUDENT_NAV = [
   { to: '/practice', label: 'Luyện viết', icon: PenLine },
   { to: '/sets', label: 'Bộ thẻ', icon: Layers },
   { to: '/assignments', label: 'Bài tập', icon: ClipboardList },
-  { to: '/progress', label: 'Tiến độ', icon: LineChart },
-  { to: '/about', label: 'Về VIVID', icon: Info, desktopOnly: true },
 ]
 
 const TEACHER_NAV = [
   { to: '/teacher', label: 'Lớp học', icon: Users, end: false },
   { to: '/idioms', label: 'Tra cứu', icon: BookOpen },
-  { to: '/about', label: 'Về VIVID', icon: Info },
 ]
 
 function HeaderSearch() {
@@ -50,7 +47,7 @@ function StreakCounter() {
   if (!data) return null
   return (
     <Link
-      to="/progress"
+      to="/"
       title={`${data.streak} ngày học liên tiếp`}
       className={cn('flex items-center gap-1 text-sm font-semibold tabular-nums', data.todayCount ? 'text-orange-600' : 'text-stone-400')}
     >
@@ -106,9 +103,7 @@ function UserMenu() {
 
 export function AppLayout() {
   const { user } = useAuth()
-  const nav: { to: string; label: string; icon: typeof House; end?: boolean; desktopOnly?: boolean }[] =
-    user?.role === 'teacher' ? TEACHER_NAV : STUDENT_NAV
-  const mobileNav = nav.filter((n) => !n.desktopOnly)
+  const nav: { to: string; label: string; icon: typeof House; end?: boolean }[] = user?.role === 'teacher' ? TEACHER_NAV : STUDENT_NAV
 
   return (
     <div className="min-h-dvh">
@@ -153,19 +148,19 @@ export function AppLayout() {
           <p>
             Dữ liệu, nhãn đặc trưng và tiêu chí chấm: <span className="text-stone-700">VIVID ({VIVID.shortCite})</span> · giấy phép {VIVID.license}
           </p>
-          <Link to="/about" className="font-medium text-stone-700 hover:text-brand-700">
-            Về bộ dữ liệu VIVID
-          </Link>
+          <a href={VIVID.arxivUrl} target="_blank" rel="noreferrer" className="font-medium text-stone-700 hover:text-brand-700">
+            Bài báo VIVID
+          </a>
         </div>
       </footer>
 
       <nav
         className={cn(
           'fixed inset-x-0 bottom-0 z-30 grid border-t border-stone-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden',
-          mobileNav.length === 6 ? 'grid-cols-6' : 'grid-cols-3',
+          nav.length === 5 ? 'grid-cols-5' : 'grid-cols-2',
         )}
       >
-        {mobileNav.map(({ to, label, icon: Icon, end }) => (
+        {nav.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}

@@ -1,13 +1,13 @@
 import type { Api } from '@/api/types'
 import { ApiError, setToken } from '@/api/client'
-import type { Deck, DeckSource, Flashcard, GradingResult, Idiom, IdiomStats, MasteryLevel, ProgressSummary, Quiz, QuizResult, User } from '@/types'
+import type { Deck, DeckSource, Flashcard, GradingResult, Idiom, MasteryLevel, ProgressSummary, Quiz, QuizResult, User } from '@/types'
 import { MASTERY_LEVELS, TOPICS, TOPIC_IDS, TRAITS, TRAIT_IDS } from '@/lib/constants'
 import { masteryFromScore } from '@/lib/mastery'
 import { isDue, isLearned, isNewCard, newSrs, schedule } from '@/lib/srs'
 import { normalize, sameAnswer, toDateKey } from '@/lib/text'
 import { createLogger } from '@/lib/logger'
 import { IDIOMS } from './idioms.data'
-import { gradeAnswer, hintFor } from './grader'
+import { gradeAnswer } from './grader'
 import { generateQuestions } from './quizGen'
 import { classroom } from './classroom'
 import { DAY, avg, bestScores, byId, currentUser, idiomOrThrow, loadDb, saveDb, withRole, type Db, type StoredCard, type StoredDeck } from './db'
@@ -114,18 +114,6 @@ const rawMockApi: Api = {
       if (query?.trait) pool = pool.filter((i) => i.traits.includes(query.trait!))
       return pick(pool.length ? pool : IDIOMS)
     },
-    async stats() {
-      await delay(150)
-      const byTopic = Object.fromEntries(TOPIC_IDS.map((t) => [t, IDIOMS.filter((i) => i.topic === t).length])) as IdiomStats['byTopic']
-      const byTrait = Object.fromEntries(TRAIT_IDS.map((t) => [t, IDIOMS.filter((i) => i.traits.includes(t)).length])) as IdiomStats['byTrait']
-      return {
-        total: IDIOMS.length,
-        byTopic,
-        byTrait,
-        withGlossary: IDIOMS.filter((i) => i.glossary?.length).length,
-        withCitation: IDIOMS.filter((i) => i.citation).length,
-      }
-    },
     async neighbors(id) {
       await delay(120)
       const index = ALPHABETICAL.findIndex((i) => i.id === id)
@@ -152,10 +140,6 @@ const rawMockApi: Api = {
       db.attempts.push(result)
       saveDb(db)
       return result
-    },
-    async hint(idiomId, level) {
-      await delay(500)
-      return hintFor(idiomOrThrow(idiomId), level)
     },
     async history(limit = 20) {
       await delay(150)
@@ -363,13 +347,6 @@ const rawMockApi: Api = {
         return { trait, total: idioms.length, attempts: scores.length, avgScore: avg(scores), levels }
       })
 
-      const scoreHistory = Array.from({ length: 30 }, (_, i) => {
-        const d = new Date(today)
-        d.setDate(d.getDate() - (29 - i))
-        const key = toDateKey(d)
-        return { date: key, value: avg(db.attempts.filter((a) => toDateKey(new Date(a.createdAt)) === key).map((a) => a.overall)) }
-      })
-
       const activity = Array.from({ length: 84 }, (_, i) => {
         const d = new Date(today)
         d.setDate(d.getDate() - (83 - i))
@@ -401,7 +378,6 @@ const rawMockApi: Api = {
         cardsDue: db.cards.filter((c) => !isNewCard(c.srs) && isDue(c.srs)).length,
         byTopic,
         byTrait,
-        scoreHistory,
         activity,
         weakIdioms,
       }

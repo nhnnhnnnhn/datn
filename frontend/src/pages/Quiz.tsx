@@ -5,7 +5,7 @@ import { api } from '@/api'
 import { PageHeader, Section } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Label, Select } from '@/components/ui/Field'
-import { EmptyState, ErrorMessage } from '@/components/ui/Feedback'
+import { EmptyState, ErrorMessage, Spinner } from '@/components/ui/Feedback'
 import { LessonPlayer } from '@/components/lesson/LessonPlayer'
 import { QUESTION_TYPES, TOPICS, TOPIC_IDS, TRAITS, TRAIT_IDS } from '@/lib/constants'
 import { createLogger } from '@/lib/logger'
@@ -117,7 +117,11 @@ export default function Quiz() {
         </form>
 
         <Section title="Lần làm gần đây">
-          {history.data?.length ? (
+          {history.error ? (
+            <ErrorMessage error={history.error} />
+          ) : !history.data ? (
+            <Spinner />
+          ) : history.data.length ? (
             <ul className="divide-y divide-stone-100 text-sm">
               {history.data.map((r) => (
                 <li key={r.id} className="flex items-baseline justify-between py-2">

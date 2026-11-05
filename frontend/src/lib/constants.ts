@@ -142,4 +142,5 @@ export const SUBMISSION_STATUS: Record<SubmissionStatus, { label: string; classN
   returned: { label: 'Đã trả bài', className: 'text-sky-700' },
 }
 
-export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
+// Unset: mock in `vite dev` only. Builds opt in with VITE_USE_MOCK=true (e.g. the demo deploy)
+export const USE_MOCK = import.meta.env.VITE_USE_MOCK ? import.meta.env.VITE_USE_MOCK === 'true' : import.meta.env.DEV

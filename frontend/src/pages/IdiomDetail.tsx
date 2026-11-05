@@ -90,9 +90,7 @@ export default function IdiomDetail() {
         <header className="border-b border-stone-200 pb-5">
           <h1 className="font-serif text-3xl leading-tight font-bold text-stone-900 sm:text-4xl">{idiom.phrase}</h1>
           <p className="mt-2 text-sm text-stone-600">
-            <Link to="/about" className="font-medium text-stone-900 hover:text-brand-700">
-              VIVID #{idiom.id}
-            </Link>{' '}
+            <span className="font-medium text-stone-900">VIVID #{idiom.id}</span>{' '}
             · Chủ đề{' '}
             <Link to={`/idioms?topic=${idiom.topic}`} className="text-stone-900 underline decoration-stone-300 underline-offset-2 hover:decoration-stone-900">
               {TOPICS[idiom.topic].label}
@@ -163,9 +161,7 @@ export default function IdiomDetail() {
           <section id="dac-trung" className="scroll-mt-20 border-t border-stone-200 py-6">
             <div className="mb-3 flex items-baseline justify-between gap-3">
               <h2 className="text-lg font-semibold text-stone-900">Đặc trưng ngôn ngữ</h2>
-              <Link to="/about#phan-loai" className="text-xs text-stone-500 hover:text-brand-700">
-                Nhãn do chuyên gia gán trong VIVID
-              </Link>
+              <span className="text-xs text-stone-500">Nhãn do chuyên gia gán trong VIVID</span>
             </div>
             <dl className="space-y-3">
               {idiom.traits.map((t) => (

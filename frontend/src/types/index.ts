@@ -25,14 +25,6 @@ export interface Idiom {
   glossary?: GlossaryItem[]
 }
 
-export interface IdiomStats {
-  total: number
-  byTopic: Record<TopicId, number>
-  byTrait: Record<TraitId, number>
-  withGlossary: number
-  withCitation: number
-}
-
 export interface IdiomQuery {
   q?: string
   topic?: TopicId
@@ -97,13 +89,6 @@ export interface GradingFeedback {
   issues: FeedbackIssue[]
   strengths: string[]
   missingKeywords: string[]
-}
-
-export type HintLevel = 1 | 2 | 3
-
-export interface GradingHint {
-  level: HintLevel
-  text: string
 }
 
 export interface GradingResult {
@@ -219,11 +204,6 @@ export interface TraitStat {
   levels: Record<MasteryLevel, number>
 }
 
-export interface DailyPoint {
-  date: string // YYYY-MM-DD
-  value: number | null
-}
-
 export interface ActivityDay {
   date: string
   count: number
@@ -244,7 +224,6 @@ export interface ProgressSummary {
   cardsDue: number
   byTopic: TopicStat[]
   byTrait: TraitStat[]
-  scoreHistory: DailyPoint[]
   activity: ActivityDay[]
   weakIdioms: { idiom: Idiom; bestScore: number }[]
 }
