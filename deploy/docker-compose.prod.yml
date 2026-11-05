@@ -16,14 +16,18 @@ services:
       - ssl_cert_file=/certs/server.crt
       - -c
       - ssl_key_file=/certs/server.key
+      - -c
+      - hba_file=/etc/postgresql/pg_hba.conf
     ports:
-      # Published for Tailscale Funnel (tcp :10000), see docs/deployment.md "Remote database access"
-      - "127.0.0.1:${DB_PORT:-15432}:5432"
+      # All interfaces: the router forwards db.nhnhn.cloud:2101 here and Tailscale Funnel
+      # (tcp :10000) uses localhost; see docs/deployment.md "Remote database access"
+      - "${DB_PORT:-15432}:5432"
     volumes:
       # 18+ keeps data in /var/lib/postgresql/18/docker, so the volume mounts one level up.
       # A volume holding 16 data makes the 18 entrypoint refuse to start; hence the new name.
       - pgdata18:/var/lib/postgresql
       - ./certs:/certs:ro
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U vivid -d idioms"]
       interval: 5s
@@ -35,7 +39,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://vivid:${POSTGRES_PASSWORD}@db:5432/idioms
+      DATABASE_URL: postgresql://vivid:${POSTGRES_PASSWORD}@db:5432/idioms?sslmode=require
       LOG_TO_CLIENT: "false"
     depends_on:
       db:

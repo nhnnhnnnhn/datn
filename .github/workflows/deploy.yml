@@ -89,7 +89,7 @@ jobs:
       - name: Upload deploy files
         run: |
           ssh "$TARGET" "mkdir -p '$DEPLOY_PATH'"
-          scp deploy/docker-compose.prod.yml deploy/deploy.sh "$TARGET:$DEPLOY_PATH/"
+          scp deploy/docker-compose.prod.yml deploy/deploy.sh deploy/pg_hba.conf "$TARGET:$DEPLOY_PATH/"
       - name: Log in to GHCR on the server
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" \
