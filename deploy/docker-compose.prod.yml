@@ -8,10 +8,22 @@ services:
       POSTGRES_USER: vivid
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: idioms
+    command:
+      - postgres
+      - -c
+      - ssl=on
+      - -c
+      - ssl_cert_file=/certs/server.crt
+      - -c
+      - ssl_key_file=/certs/server.key
+    ports:
+      # Published for Tailscale Funnel (tcp :10000), see docs/deployment.md "Remote database access"
+      - "127.0.0.1:${DB_PORT:-15432}:5432"
     volumes:
       # 18+ keeps data in /var/lib/postgresql/18/docker, so the volume mounts one level up.
       # A volume holding 16 data makes the 18 entrypoint refuse to start; hence the new name.
       - pgdata18:/var/lib/postgresql
+      - ./certs:/certs:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U vivid -d idioms"]
       interval: 5s
