@@ -2,14 +2,16 @@ name: vivid-learn
 
 services:
   db:
-    image: postgres:16
+    image: postgres:18.6
     restart: unless-stopped
     environment:
       POSTGRES_USER: vivid
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: idioms
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # 18+ keeps data in /var/lib/postgresql/18/docker, so the volume mounts one level up.
+      # A volume holding 16 data makes the 18 entrypoint refuse to start; hence the new name.
+      - pgdata18:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U vivid -d idioms"]
       interval: 5s
@@ -52,4 +54,4 @@ services:
       retries: 5
 
 volumes:
-  pgdata:
+  pgdata18:
