@@ -1,6 +1,6 @@
 import { createLogger, logServerLogs, newRequestId } from '@/lib/logger'
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? '/api'
+export const BASE_URL = import.meta.env.VITE_API_URL ?? '/api'
 const TOKEN_KEY = 'vivid:token'
 const log = createLogger('HTTP')
 
