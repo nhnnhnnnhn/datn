@@ -160,7 +160,11 @@ export default function Dashboard() {
           )}
 
           <Section title="Lịch sử chấm bài viết" count="5 bài gần nhất">
-            {history.data?.length ? (
+            {history.error ? (
+              <ErrorMessage error={history.error} />
+            ) : !history.data ? (
+              <Spinner />
+            ) : history.data.length ? (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[640px] text-sm">
                   <thead>
