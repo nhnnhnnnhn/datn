@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16
+    image: postgres:18.6
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -8,7 +8,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # 18+ keeps data in /var/lib/postgresql/18/docker, so the volume mounts one level up.
+      - pgdata18:/var/lib/postgresql
 
   backend:
     build: ./backend
@@ -19,4 +20,4 @@ services:
       - db
 
 volumes:
-  pgdata:
+  pgdata18:
