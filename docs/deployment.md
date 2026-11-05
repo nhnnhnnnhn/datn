@@ -1,7 +1,8 @@
 # Deployment
 
 Every push to `dev` runs CI, builds the frontend and backend images, pushes them to GHCR and rolls
-them out on the server over Tailscale. The app is published to the internet with Tailscale Funnel.
+them out on the server over Tailscale. The app is published at https://dev-datn.nhnhn.cloud through
+Cloudflare and Nginx Proxy Manager, and also with Tailscale Funnel.
 `main` is reserved for production and does not deploy yet.
 
 ```
@@ -9,7 +10,8 @@ push dev ─▶ ci (frontend test+build, backend ruff+pytest)
           ─▶ build (ghcr.io/nhnnhnnnhn/datn-{frontend,backend}:<sha>, :latest)
           ─▶ deploy: runner joins the tailnet as tag:ci (ephemeral)
                      ─ Tailscale SSH ─▶ server: docker compose pull && up --wait
-internet ─▶ https://<server>.<tailnet>.ts.net (Funnel) ─▶ 127.0.0.1:8080 frontend (nginx)
+internet ─▶ https://dev-datn.nhnhn.cloud (Cloudflare) ─▶ :443 NPM ─▶ vivid-learn-frontend:80 ─┐
+internet ─▶ https://<server>.<tailnet>.ts.net (Funnel) ─▶ 127.0.0.1:8080 frontend (nginx) ◀─┘
                                                             └─ /api/ ─▶ backend:8000 ─▶ db
 internet ─▶ <server>.<tailnet>.ts.net:10000 (Funnel, raw TCP) ─▶ 127.0.0.1:15432 db (TLS required)
 ```
@@ -24,7 +26,7 @@ logs, rolls back to the previously deployed tag and fails the job.
 |---|---|
 | `.github/workflows/ci.yml` | Tests and lint; runs on PRs and is called by `deploy.yml` |
 | `.github/workflows/deploy.yml` | CI → build and push images → deploy over Tailscale SSH |
-| `deploy/docker-compose.prod.yml` | Production stack: postgres on `127.0.0.1:${DB_PORT}` (TLS), backend, frontend on `127.0.0.1:${WEB_PORT}` |
+| `deploy/docker-compose.prod.yml` | Production stack: postgres on `127.0.0.1:${DB_PORT}` (TLS), backend, frontend on `127.0.0.1:${WEB_PORT}` and the NPM network |
 | `deploy/deploy.sh` | Runs on the server: pull, `up --wait`, record the tag, prune |
 | `deploy/.env.example` | Template for the server's `.env` |
 
@@ -102,6 +104,31 @@ next deploy. Optionally add required reviewers to the `dev` environment
 
 Images are pushed with the workflow's `GITHUB_TOKEN`, and the server logs in to GHCR with that same
 short-lived token on every deploy, so no personal access token is stored anywhere.
+
+## Custom domain (Cloudflare + Nginx Proxy Manager)
+
+`dev-datn.nhnhn.cloud` goes through Cloudflare to Nginx Proxy Manager (NPM), which runs in Docker on
+the same server. NPM cannot reach the frontend's `127.0.0.1` port from its container, so the
+frontend also joins NPM's Docker network under the name `vivid-learn-frontend`.
+
+1. **Server**: NPM's network defaults to `nginx_default` (the network of `nginx-app-1` on
+   `mgmt01`). If NPM moves, set `PROXY_NETWORK` in `.env` to the new one:
+
+   ```bash
+   docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' <npm container>
+   ```
+
+   Running the stack where that network does not exist (e.g. a local test) needs
+   `docker network create nginx_default` first.
+2. **Cloudflare DNS**: `A dev-datn → <server's public IP>`, Proxied. SSL/TLS mode **Full
+   (strict)**.
+3. **NPM → Proxy Hosts → Add**: domain `dev-datn.nhnhn.cloud`, scheme `http`, forward host
+   `vivid-learn-frontend`, port `80`, Block Common Exploits on. SSL tab: request a Let's Encrypt
+   certificate with **Use a DNS Challenge → Cloudflare** (an API token with `Zone → DNS → Edit` on
+   the zone), because port 80 is not forwarded to the server. Force SSL on.
+4. **GitHub**: set the `APP_URL` variable to `https://dev-datn.nhnhn.cloud`.
+
+The database stays on Funnel: Cloudflare's proxy carries only HTTP(S), and raw TCP needs Spectrum.
 
 ## Remote database access
 
@@ -203,4 +230,6 @@ the pull is refused, run the `deploy` workflow once or `docker login ghcr.io` wi
 | `ssh: ... Permission denied` / hangs | `ssh` rule for `tag:ci → tag:server` as `deploy`; server started with `--ssh` |
 | `docker: permission denied` | `deploy` user is in the `docker` group (log in again after `usermod`) |
 | `up --wait` times out | `docker compose -f docker-compose.prod.yml logs backend`; `.env` values |
+| Domain returns 502 | NPM forward host `vivid-learn-frontend:80`; `docker network inspect $PROXY_NETWORK` lists the frontend |
+| Domain returns 526 / 525 | NPM has a valid certificate for the domain; Cloudflare SSL mode is Full (strict) |
 | Funnel URL does not load | `tailscale funnel status`; port matches `WEB_PORT`; `funnel` node attribute |

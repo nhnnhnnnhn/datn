@@ -56,6 +56,11 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:${WEB_PORT:-8080}:80"
+    networks:
+      default:
+      proxy:
+        # Nginx Proxy Manager forwards dev-datn.nhnhn.cloud to this name
+        aliases: [vivid-learn-frontend]
     depends_on:
       backend:
         condition: service_healthy
@@ -67,3 +72,8 @@ services:
 
 volumes:
   pgdata18:
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:-nginx_default}
