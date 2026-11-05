@@ -140,8 +140,8 @@ with a password (`deploy/pg_hba.conf`); the backend connects with `sslmode=requi
 from outside the tailnet:
 
 - **`db.nhnhn.cloud:2101`** (main): a DNS-only Cloudflare record (`CNAME db → nhnhn.cloud`, grey
-  cloud) to the home IP, and the router forwards TCP 2101 to `192.168.20.2:15432`. Any Postgres
-  client works with a plain `sslmode=require`.
+  cloud) to the home IP, and the router forwards TCP 2101 to port 15432 on the server's LAN
+  address. Any Postgres client works with a plain `sslmode=require`.
 - **`mgmt01.tail39b71.ts.net:10000`** (backup): Tailscale Funnel. Funnel relays pick the node from
   the TLS SNI, so clients must use `sslnegotiation=direct` (Postgres 17+ protocol).
 
