@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Field'
 import { EmptyState, ErrorMessage, Spinner } from '@/components/ui/Feedback'
 import { IdiomResult } from '@/components/idiom/IdiomResult'
-import { GlossaryList, type GlossaryEntry } from '@/components/idiom/GlossaryList'
 import { DailyIdiomBox } from '@/components/idiom/DailyIdiomBox'
 import { TOPICS, TOPIC_IDS, TRAITS, TRAIT_IDS } from '@/lib/constants'
 
@@ -51,15 +50,6 @@ export default function Idioms() {
 
   const items = query.data?.pages.flatMap((p) => p.items) ?? []
   const total = query.data?.pages[0]?.total ?? 0
-  const glossary: GlossaryEntry[] = []
-  const seenTerms = new Set<string>()
-  for (const idiom of items) {
-    for (const g of idiom.glossary ?? []) {
-      if (seenTerms.has(g.term)) continue
-      seenTerms.add(g.term)
-      glossary.push({ ...g, source: { id: idiom.id, phrase: idiom.phrase } })
-    }
-  }
 
   return (
     <div>
@@ -135,14 +125,7 @@ export default function Idioms() {
           )}
         </Section>
 
-        <aside className="space-y-8">
-          {glossary.length > 0 && (
-            <Section title="Từ khó" count={glossary.length}>
-              <div className="-mt-3">
-                <GlossaryList items={glossary.slice(0, 8)} />
-              </div>
-            </Section>
-          )}
+        <aside>
           <DailyIdiomBox />
         </aside>
       </div>

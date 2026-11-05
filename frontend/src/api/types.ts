@@ -8,12 +8,9 @@ import type {
   Deck,
   DeckGenerateConfig,
   Flashcard,
-  GradingHint,
   GradingResult,
-  HintLevel,
   Idiom,
   IdiomQuery,
-  IdiomStats,
   Paginated,
   ProgressSummary,
   Quiz,
@@ -40,11 +37,9 @@ export interface Api {
     daily(): Promise<Idiom>
     random(query?: Pick<IdiomQuery, 'topic' | 'trait'>): Promise<Idiom>
     neighbors(id: number): Promise<Idiom[]>
-    stats(): Promise<IdiomStats>
   }
   grading: {
     grade(idiomId: number, answer: string): Promise<GradingResult>
-    hint(idiomId: number, level: HintLevel): Promise<GradingHint>
     history(limit?: number): Promise<GradingResult[]>
   }
   quizzes: {

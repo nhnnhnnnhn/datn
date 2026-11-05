@@ -16,11 +16,9 @@ export const httpApi: Api = {
     daily: () => request('GET', '/idioms/daily'),
     random: (query) => request('GET', '/idioms/random', { query: { ...query } }),
     neighbors: (id) => request('GET', `/idioms/${id}/neighbors`),
-    stats: () => request('GET', '/idioms/stats'),
   },
   grading: {
     grade: (idiomId, answer) => request('POST', '/grading', { body: { idiomId, answer } }),
-    hint: (idiomId, level) => request('POST', '/grading/hint', { body: { idiomId, level } }),
     history: (limit = 20) => request('GET', '/grading/history', { query: { limit } }),
   },
   quizzes: {

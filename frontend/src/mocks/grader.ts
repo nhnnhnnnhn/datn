@@ -1,5 +1,4 @@
-import type { Criterion, CriterionScores, ErrorType, FeedbackIssue, GradingFeedback, GradingHint, HintLevel, Idiom } from '@/types'
-import { TOPICS } from '@/lib/constants'
+import type { Criterion, CriterionScores, ErrorType, FeedbackIssue, GradingFeedback, Idiom } from '@/types'
 import { normalize, syllables } from '@/lib/text'
 
 // Stand-in grader for the mock API: word overlap with the reference explanation.
@@ -216,25 +215,3 @@ export function gradeAnswer(idiom: Idiom, answer: string): { scores: CriterionSc
   }
 }
 
-export function hintFor(idiom: Idiom, level: HintLevel): GradingHint {
-  if (level === 1) {
-    if (idiom.traits.includes('pragmatic')) {
-      return { level, text: 'Người xưa nói câu này để khen hay để chê? Họ đang nhắm tới kiểu người hay hành vi nào?' }
-    }
-    if (idiom.traits.includes('literal') || idiom.traits.includes('folk_knowledge')) {
-      return {
-        level,
-        text: 'Câu này ghi lại một kinh nghiệm cụ thể trong đời sống (làm ruộng, thời tiết, nấu ăn…). Hãy hình dung lúc người ta nói câu này.',
-      }
-    }
-    return { level, text: 'Hình ảnh trong câu tượng trưng cho điều gì ở con người hoặc cuộc sống?' }
-  }
-  if (level === 2) {
-    if (idiom.glossary?.length) {
-      return { level, text: `Nghĩa của từ khó: ${idiom.glossary.map((g) => `${g.term} – ${g.meaning}`).join('; ')}.` }
-    }
-    return { level, text: `Câu thuộc nhóm “${TOPICS[idiom.topic].label}”: ${TOPICS[idiom.topic].description.toLowerCase()}.` }
-  }
-  const opening = idiom.explanation.split(/[,.;:]/)[0].split(' ').slice(0, 8).join(' ')
-  return { level, text: `Câu trả lời có thể bắt đầu như sau: “${opening}…”` }
-}

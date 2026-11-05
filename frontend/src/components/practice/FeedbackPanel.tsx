@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
 import { ChevronDown } from 'lucide-react'
 import type { Criterion, GradingResult } from '@/types'
 import { CRITERIA, USE_MOCK } from '@/lib/constants'
@@ -61,9 +60,9 @@ export function FeedbackPanel({ result }: { result: GradingResult }) {
       {scores.accuracy === 0 && <p className="mt-2 text-xs text-stone-500">Ý nghĩa cốt lõi được 0 điểm nên điểm tổng bằng 0.</p>}
       <p className="mt-2 text-xs text-stone-500">
         4 tiêu chí theo judge aspect-based của{' '}
-        <Link to="/about" className="underline decoration-stone-300 underline-offset-2 hover:text-brand-700">
+        <a href={VIVID.arxivUrl} target="_blank" rel="noreferrer" className="underline decoration-stone-300 underline-offset-2 hover:text-brand-700">
           VIVID
-        </Link>{' '}
+        </a>{' '}
         (κ = {VIVID.judgeKappa.toLocaleString('vi-VN')} so với người chấm); nhóm lỗi theo phần phân tích lỗi của bài báo.
       </p>
 

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router'
 import type { Role } from '@/types'
 import { useAuth } from '@/context/AuthContext'
@@ -24,10 +24,6 @@ import ClassDetail from '@/pages/teacher/ClassDetail'
 import AssignmentNew from '@/pages/teacher/AssignmentNew'
 import AssignmentReview from '@/pages/teacher/AssignmentReview'
 import NotFound from '@/pages/NotFound'
-import About from '@/pages/About'
-
-// recharts is heavy, so the stats page is code-split
-const Progress = lazy(() => import('@/pages/Progress'))
 
 const log = createLogger('ROUTER')
 
@@ -73,7 +69,6 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="idioms" element={<Idioms />} />
           <Route path="idioms/:id" element={<IdiomDetail />} />
-          <Route path="about" element={<About />} />
           <Route element={<RequireRole role="student" />}>
             <Route index element={<Dashboard />} />
             <Route path="practice" element={<Practice />} />
@@ -82,14 +77,6 @@ export default function App() {
             <Route path="quiz" element={<Quiz />} />
             <Route path="assignments" element={<Assignments />} />
             <Route path="assignments/:id" element={<AssignmentDetail />} />
-            <Route
-              path="progress"
-              element={
-                <Suspense fallback={<Spinner />}>
-                  <Progress />
-                </Suspense>
-              }
-            />
           </Route>
           <Route path="teacher" element={<RequireRole role="teacher" />}>
             <Route index element={<Classes />} />
