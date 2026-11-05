@@ -11,6 +11,7 @@ push dev ─▶ ci (frontend test+build, backend ruff+pytest)
                      ─ Tailscale SSH ─▶ server: docker compose pull && up --wait
 internet ─▶ https://<server>.<tailnet>.ts.net (Funnel) ─▶ 127.0.0.1:8080 frontend (nginx)
                                                             └─ /api/ ─▶ backend:8000 ─▶ db
+internet ─▶ <server>.<tailnet>.ts.net:10000 (Funnel, raw TCP) ─▶ 127.0.0.1:15432 db (TLS required)
 ```
 
 Pull requests only run `ci.yml`. The deploy workflow can also be started by hand from the Actions
@@ -23,7 +24,7 @@ logs, rolls back to the previously deployed tag and fails the job.
 |---|---|
 | `.github/workflows/ci.yml` | Tests and lint; runs on PRs and is called by `deploy.yml` |
 | `.github/workflows/deploy.yml` | CI → build and push images → deploy over Tailscale SSH |
-| `deploy/docker-compose.prod.yml` | Production stack: postgres, backend, frontend on `127.0.0.1:${WEB_PORT}` |
+| `deploy/docker-compose.prod.yml` | Production stack: postgres on `127.0.0.1:${DB_PORT}` (TLS), backend, frontend on `127.0.0.1:${WEB_PORT}` |
 | `deploy/deploy.sh` | Runs on the server: pull, `up --wait`, record the tag, prune |
 | `deploy/.env.example` | Template for the server's `.env` |
 
@@ -102,12 +103,88 @@ next deploy. Optionally add required reviewers to the `dev` environment
 Images are pushed with the workflow's `GITHUB_TOKEN`, and the server logs in to GHCR with that same
 short-lived token on every deploy, so no personal access token is stored anywhere.
 
+## Remote database access
+
+People outside the tailnet connect straight to Postgres through Funnel on TCP port 10000. Funnel
+relays pick the destination node from the TLS SNI, so a connection must open with a TLS handshake:
+clients use `sslnegotiation=direct` (Postgres 17+ protocol), and Postgres terminates TLS itself
+with its own certificate. Plain-text connections cannot reach the server through Funnel at all.
+
+### Server, once (before merging a deploy that enables SSL)
+
+The `db` service fails to start without the certificate, so create it first. Replace the host
+name with the server's MagicDNS name.
+
+```bash
+cd /opt/vivid-learn
+HOST=mgmt01.tail39b71.ts.net
+sudo mkdir -p certs
+sudo openssl req -x509 -newkey rsa:4096 -nodes -days 3650 \
+  -subj "/CN=$HOST" -addext "subjectAltName=DNS:$HOST" \
+  -keyout certs/server.key -out certs/server.crt
+sudo chown 999:999 certs/server.key certs/server.crt   # uid of postgres in the image
+sudo chmod 600 certs/server.key
+
+sudo tailscale funnel --bg --tcp=10000 tcp://localhost:15432
+tailscale funnel status
+```
+
+The certificate is self-signed and valid for 10 years. `server.crt` is public: give it to every
+client so they can verify the server (`sslmode=verify-full`). Never share `server.key`.
+
+### One login per person
+
+After the deploy, create a role for each person instead of sharing `vivid` (the app's owner role):
+
+```bash
+cd /opt/vivid-learn
+IMAGE_TAG=$(cat .deployed-tag) docker compose -f docker-compose.prod.yml exec db psql -U vivid -d idioms
+```
+
+```sql
+CREATE ROLE friend LOGIN PASSWORD '<openssl rand -hex 24>' CONNECTION LIMIT 5;
+GRANT CONNECT ON DATABASE idioms TO friend;
+GRANT USAGE ON SCHEMA public TO friend;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO friend;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO friend;
+ALTER DEFAULT PRIVILEGES FOR ROLE vivid IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO friend;
+ALTER DEFAULT PRIVILEGES FOR ROLE vivid IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO friend;
+```
+
+For read-only access grant only `SELECT`. Schema changes stay with Alembic migrations run by the
+app. To revoke: `DROP OWNED BY friend; DROP ROLE friend;`. To close the port for everyone:
+`sudo tailscale funnel --tcp=10000 off`.
+
+### Client settings
+
+| Setting | Value |
+|---|---|
+| Host / port | `mgmt01.tail39b71.ts.net` / `10000` |
+| Database / user | `idioms` / the role created above |
+| SSL | `sslmode=verify-full`, `sslrootcert=<path to server.crt>`, `sslnegotiation=direct` |
+
+```bash
+psql "host=mgmt01.tail39b71.ts.net port=10000 dbname=idioms user=friend sslmode=verify-full sslrootcert=server.crt sslnegotiation=direct"
+```
+
+```text
+postgresql://friend:<password>@mgmt01.tail39b71.ts.net:10000/idioms?sslmode=verify-full&sslrootcert=server.crt&sslnegotiation=direct
+```
+
+- `psql`, psycopg and other libpq-based clients need libpq 17 or newer (older ones reject
+  `sslnegotiation`).
+- DBeaver and other JDBC clients: driver properties `sslmode=verify-full`,
+  `sslrootcert=<path>`, `sslNegotiation=direct`.
+
 ## Operations
 
 ```bash
 ssh deploy@vivid-learn                       # over Tailscale SSH
 cd /opt/vivid-learn
 cat .deployed-tag                            # sha currently running
+export IMAGE_TAG=$(cat .deployed-tag)        # the compose file requires it for every command
 docker compose -f docker-compose.prod.yml ps
 docker compose -f docker-compose.prod.yml logs -f backend
 IMAGE_TAG=<older sha> sh deploy.sh           # roll back to a previous build
