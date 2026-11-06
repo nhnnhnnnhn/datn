@@ -178,12 +178,12 @@ After the deploy, create a role for each person instead of sharing `vivid` (the 
 
 ```bash
 cd /opt/vivid-learn
-IMAGE_TAG=$(cat .deployed-tag) docker compose -f docker-compose.prod.yml exec db psql -U vivid -d idioms
+IMAGE_TAG=$(cat .deployed-tag) docker compose -f docker-compose.prod.yml exec db psql -U vivid -d public
 ```
 
 ```sql
 CREATE ROLE friend LOGIN PASSWORD '<openssl rand -hex 24>' CONNECTION LIMIT 5;
-GRANT CONNECT ON DATABASE idioms TO friend;
+GRANT CONNECT ON DATABASE public TO friend;
 GRANT USAGE ON SCHEMA public TO friend;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO friend;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO friend;
@@ -202,12 +202,12 @@ router rule and run `sudo tailscale funnel --tcp=10000 off`.
 | Setting | Value |
 |---|---|
 | Host / port | `db.nhnhn.cloud` / `2101` |
-| Database / user | `idioms` / the role created above |
+| Database / user | `public` / the role created above |
 | SSL | `sslmode=require`, or `sslmode=verify-full` with `sslrootcert=<path to server.crt>` |
 
 ```text
-jdbc:postgresql://db.nhnhn.cloud:2101/idioms?sslmode=require
-postgresql://friend:<password>@db.nhnhn.cloud:2101/idioms?sslmode=verify-full&sslrootcert=server.crt
+jdbc:postgresql://db.nhnhn.cloud:2101/public?sslmode=require
+postgresql://friend:<password>@db.nhnhn.cloud:2101/public?sslmode=verify-full&sslrootcert=server.crt
 ```
 
 Through Funnel instead: host `mgmt01.tail39b71.ts.net`, port `10000`, and add

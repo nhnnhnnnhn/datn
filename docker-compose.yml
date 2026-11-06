@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: idioms
+      POSTGRES_DB: public
     ports:
       - "5432:5432"
     volumes:
