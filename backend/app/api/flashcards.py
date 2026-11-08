@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -16,14 +16,6 @@ class DeckGenerateIn(BaseModel):
     topic: str | None = None
     trait: str | None = None
     fromWeak: bool = False
-
-
-class ReviewIn(BaseModel):
-    rating: str
-
-
-class SaveIn(BaseModel):
-    idiomId: int
 
 
 @router.get("/decks")
@@ -49,28 +41,3 @@ def delete_deck(deck_id: str, db: Session = Depends(get_db), user: User = Depend
 @router.get("/decks/{deck_id}/cards")
 def cards(deck_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return flashcard_service.list_cards(db, user, deck_id)
-
-
-@router.get("/decks/{deck_id}/study")
-def study(
-    deck_id: str,
-    newLimit: int = Query(10, ge=0, le=50),
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    return flashcard_service.study_queue(db, user, deck_id, newLimit)
-
-
-@router.post("/cards/{card_id}/review")
-def review(
-    card_id: str,
-    body: ReviewIn,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    return flashcard_service.review(db, user, card_id, body.rating)
-
-
-@router.post("/saved")
-def save_idiom(body: SaveIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return flashcard_service.save_idiom(db, user, body.idiomId)
