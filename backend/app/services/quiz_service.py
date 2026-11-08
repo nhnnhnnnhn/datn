@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
@@ -95,7 +95,7 @@ def submit(db: Session, user: User, quiz_id: str, answers: list[dict], duration_
         user_id=user.id,
         total_points=len(quiz.questions),
         duration_sec=duration_sec,
-        completed_at=datetime.now(timezone.utc),
+        completed_at=datetime.now(UTC),
     )
     db.add(attempt)
     db.flush()

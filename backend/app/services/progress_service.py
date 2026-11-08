@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session, joinedload
 
@@ -13,8 +13,8 @@ from app.models import Flashcard, FlashcardReview, Idiom, QuizAttempt, Submissio
 
 def _date_key(dt: datetime) -> str:
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc).date().isoformat()
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC).date().isoformat()
 
 
 def _mastery(avg_score: float | None) -> str:
@@ -59,12 +59,7 @@ def summary(db: Session, user: User) -> dict:
         .filter(Flashcard.user_id == user.id)
         .all()
     )
-    reviews = (
-        db.query(FlashcardReview)
-        .join(Flashcard)
-        .filter(Flashcard.user_id == user.id)
-        .all()
-    )
+    reviews = db.query(FlashcardReview).join(Flashcard).filter(Flashcard.user_id == user.id).all()
 
     by_id = {i.id: i for i in idioms}
     best: dict[int, float] = {}
@@ -83,7 +78,7 @@ def summary(db: Session, user: User) -> dict:
         if rev.reviewed_at:
             activity[_date_key(rev.reviewed_at)] += 1
 
-    today = datetime.now(timezone.utc)
+    today = datetime.now(UTC)
     today_key = _date_key(today)
     streak = 0
     cursor = today
@@ -152,11 +147,7 @@ def summary(db: Session, user: User) -> dict:
     attempt_scores = [float(a.overall_score or 0) for a in attempts]
 
     weak = sorted(((i, s) for i, s in best.items() if s <= 2), key=lambda x: x[1])[:5]
-    weak_idioms = [
-        {"idiom": idiom_out(by_id[i]), "bestScore": s}
-        for i, s in weak
-        if i in by_id
-    ]
+    weak_idioms = [{"idiom": idiom_out(by_id[i]), "bestScore": s} for i, s in weak if i in by_id]
 
     return {
         "totalIdioms": len(idioms),

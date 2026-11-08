@@ -1,7 +1,17 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -16,7 +26,10 @@ class Quiz(Base):
     difficulty: Mapped[str | None] = mapped_column(String(20))
     generated_by: Mapped[str | None] = mapped_column(String(100))
     config: Mapped[dict | None] = mapped_column(JsonText)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
 
     user = relationship("User", back_populates="quizzes")
     questions = relationship("QuizQuestion", back_populates="quiz", cascade="all, delete-orphan")
@@ -51,7 +64,10 @@ class QuizAttempt(Base):
     score: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     total_points: Mapped[int | None] = mapped_column(Integer)
     duration_sec: Mapped[int | None] = mapped_column(Integer)
-    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     quiz = relationship("Quiz", back_populates="attempts")
@@ -61,7 +77,9 @@ class QuizAttempt(Base):
 
 class QuizAnswer(Base):
     __tablename__ = "quiz_answers"
-    __table_args__ = (UniqueConstraint("attempt_id", "question_id", name="uq_quiz_answers_attempt_question"),)
+    __table_args__ = (
+        UniqueConstraint("attempt_id", "question_id", name="uq_quiz_answers_attempt_question"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     attempt_id: Mapped[int] = mapped_column(ForeignKey("quiz_attempts.id"), nullable=False)
@@ -69,7 +87,10 @@ class QuizAnswer(Base):
     answer_text: Mapped[str | None] = mapped_column(Text)
     is_correct: Mapped[bool | None] = mapped_column(Boolean)
     awarded_points: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
-    answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    answered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
 
     attempt = relationship("QuizAttempt", back_populates="answers")
     question = relationship("QuizQuestion", back_populates="answers")

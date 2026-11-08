@@ -6,7 +6,9 @@ class OrmModel(BaseModel):
 
 
 class Paginated(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     items: list
     total: int
     page: int
-    pageSize: int
+    page_size: int = Field(alias="pageSize")

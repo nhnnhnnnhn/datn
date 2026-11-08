@@ -18,12 +18,7 @@ def _norm(text: str) -> str:
 
 
 def _load(db: Session, idiom_id: int) -> Idiom:
-    idiom = (
-        db.query(Idiom)
-        .options(joinedload(Idiom.aspects))
-        .filter(Idiom.id == idiom_id)
-        .first()
-    )
+    idiom = db.query(Idiom).options(joinedload(Idiom.aspects)).filter(Idiom.id == idiom_id).first()
     if not idiom:
         raise HTTPException(status_code=404, detail="Không tìm thấy thành ngữ")
     return idiom
@@ -63,12 +58,7 @@ def list_idioms(
     # distinct needed when joining aspect map twice conceptually — use subquery style
     query = query.distinct()
     total = query.count()
-    rows = (
-        query.order_by(Idiom.phrase.asc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-        .all()
-    )
+    rows = query.order_by(Idiom.phrase.asc()).offset((page - 1) * page_size).limit(page_size).all()
 
     items = [idiom_out(r) for r in rows]
     if q:
@@ -104,9 +94,11 @@ def daily_idiom(db: Session) -> dict:
 def random_idiom(db: Session, topic: str | None = None, trait: str | None = None) -> dict:
     query = db.query(Idiom).options(joinedload(Idiom.aspects))
     if topic and topic in ASPECT_ID_BY_TOPIC:
-        query = query.join(IdiomAspectMap).filter(IdiomAspectMap.aspect_id == ASPECT_ID_BY_TOPIC[topic])
+        aspect_id = ASPECT_ID_BY_TOPIC[topic]
+        query = query.join(IdiomAspectMap).filter(IdiomAspectMap.aspect_id == aspect_id)
     if trait and trait in ASPECT_ID_BY_TRAIT:
-        query = query.join(IdiomAspectMap).filter(IdiomAspectMap.aspect_id == ASPECT_ID_BY_TRAIT[trait])
+        aspect_id = ASPECT_ID_BY_TRAIT[trait]
+        query = query.join(IdiomAspectMap).filter(IdiomAspectMap.aspect_id == aspect_id)
     idiom = query.order_by(func.random()).first()
     if not idiom:
         idiom = db.query(Idiom).options(joinedload(Idiom.aspects)).order_by(func.random()).first()
@@ -117,17 +109,12 @@ def random_idiom(db: Session, topic: str | None = None, trait: str | None = None
 
 def neighbors(db: Session, idiom_id: int) -> list[dict]:
     _load(db, idiom_id)
-    rows = (
-        db.query(Idiom)
-        .options(joinedload(Idiom.aspects))
-        .order_by(Idiom.phrase.asc())
-        .all()
-    )
+    rows = db.query(Idiom).options(joinedload(Idiom.aspects)).order_by(Idiom.phrase.asc()).all()
     ids = [r.id for r in rows]
     try:
         index = ids.index(idiom_id)
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Không tìm thấy thành ngữ")
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Không tìm thấy thành ngữ") from exc
     start = max(0, index - 3)
     end = min(len(rows), index + 4)
     return [idiom_out(r) for r in rows[start:end]]

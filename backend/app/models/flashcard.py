@@ -1,5 +1,4 @@
 from datetime import datetime
-from decimal import Decimal
 
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -21,14 +20,24 @@ class Flashcard(Base):
     ease: Mapped[float] = mapped_column(Float, nullable=False, server_default="2.5")
     interval_days: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     repetitions: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
-    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    due_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
     last_reviewed: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
 
     user = relationship("User", back_populates="flashcards")
     idiom = relationship("Idiom", back_populates="flashcards")
     deck = relationship("Deck", back_populates="cards")
-    reviews = relationship("FlashcardReview", back_populates="flashcard", cascade="all, delete-orphan")
+    reviews = relationship(
+        "FlashcardReview",
+        back_populates="flashcard",
+        cascade="all, delete-orphan",
+    )
 
 
 class FlashcardReview(Base):
@@ -38,6 +47,9 @@ class FlashcardReview(Base):
     flashcard_id: Mapped[int] = mapped_column(ForeignKey("flashcards.id"), nullable=False)
     confidence_rating: Mapped[int | None] = mapped_column(Integer)
     rating: Mapped[str | None] = mapped_column(String(20))  # again | hard | good | easy
-    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
 
     flashcard = relationship("Flashcard", back_populates="reviews")

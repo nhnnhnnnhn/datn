@@ -24,7 +24,10 @@ class Submission(Base):
     overall_score: Mapped[Decimal | None] = mapped_column(Numeric(3, 2))
     feedback: Mapped[dict | str | None] = mapped_column(JsonText)
     ai_model: Mapped[str | None] = mapped_column(String(100))
-    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    submitted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
 
     user = relationship("User", back_populates="submissions")
     idiom = relationship("Idiom", back_populates="submissions")

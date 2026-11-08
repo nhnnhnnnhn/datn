@@ -1,9 +1,18 @@
 target-version = "py311"
 line-length = 100
-extend-exclude = ["frontend", ".specify", "node_modules"]
+extend-exclude = [
+  "frontend",
+  ".specify",
+  "node_modules",
+  "backend/migrations",
+]
 
 [lint]
 select = ["E", "W", "F", "I", "N", "B", "UP", "SIM", "RUF"]
+
+[lint.per-file-ignores]
+"backend/scripts/**" = ["E402"]
+"scripts/**" = ["E402"]
 
 [lint.isort]
 known-first-party = ["app", "ai"]

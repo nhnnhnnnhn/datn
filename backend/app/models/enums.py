@@ -1,11 +1,11 @@
 import enum
 
 
-class IdiomType(str, enum.Enum):
+class IdiomType(enum.StrEnum):
     idiom = "idiom"
     proverb = "proverb"
 
 
-class AspectType(str, enum.Enum):
+class AspectType(enum.StrEnum):
     theme = "theme"
     complexity_trait = "complexity_trait"
