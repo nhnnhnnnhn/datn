@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     llm_api_key: str = "default-api-key"
     llm_model: str = "default-model"
+    # Public path prefix when behind nginx (/api → backend). Empty for local :8000.
+    root_path: str = ""
 
 
 @lru_cache

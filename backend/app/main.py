@@ -3,8 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import app.models
 from app.api import auth, flashcards, grading, idioms, progress, quizzes
+from app.core.config import get_settings
 
-app = FastAPI(title="Vietnamese Idiom Learning API", version="0.1.0")
+settings = get_settings()
+app = FastAPI(
+    title="Vietnamese Idiom Learning API",
+    version="0.1.0",
+    root_path=settings.root_path,
+)
 
 app.add_middleware(
     CORSMiddleware,
