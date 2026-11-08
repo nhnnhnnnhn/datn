@@ -60,8 +60,7 @@ def _clean(text: str) -> str:
 def load_records() -> list[dict]:
     if not VIVID_CSV.exists():
         raise SystemExit(
-            f"Dataset not found: {VIVID_CSV}\n"
-            "Copy the VIVID CSVs into datn/data/raw/vivid/ first."
+            f"Dataset not found: {VIVID_CSV}\nCopy the VIVID CSVs into datn/data/raw/vivid/ first."
         )
 
     with VIVID_CSV.open(encoding="utf-8-sig", newline="") as f:
@@ -126,7 +125,12 @@ def seed(db: Session, *, force: bool = False) -> None:
         )
         topic = rec.get("topic")
         if topic in ASPECT_ID_BY_TOPIC:
-            maps.append(IdiomAspectMap(idiom_id=int(rec["id"]), aspect_id=ASPECT_ID_BY_TOPIC[topic]))
+            maps.append(
+                IdiomAspectMap(
+                    idiom_id=int(rec["id"]),
+                    aspect_id=ASPECT_ID_BY_TOPIC[topic],
+                )
+            )
         for trait in rec.get("traits") or []:
             if trait in ASPECT_ID_BY_TRAIT:
                 maps.append(
@@ -141,8 +145,7 @@ def seed(db: Session, *, force: bool = False) -> None:
     )
     db.commit()
     print(
-        f"done — {db.query(Idiom).count()} idioms, "
-        f"{db.query(IdiomAspectMap).count()} aspect links"
+        f"done — {db.query(Idiom).count()} idioms, {db.query(IdiomAspectMap).count()} aspect links"
     )
 
 

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-import app.models  # noqa: F401
+import app.models
 from app.api import auth, flashcards, grading, idioms, progress, quizzes
 
 app = FastAPI(title="Vietnamese Idiom Learning API", version="0.1.0")

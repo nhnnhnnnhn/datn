@@ -15,7 +15,10 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False)  # student, teacher, admin
     daily_goal: Mapped[int] = mapped_column(Integer, nullable=False, server_default="10")
-    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
 
     submissions = relationship("Submission", back_populates="user")
     quizzes = relationship("Quiz", back_populates="user")

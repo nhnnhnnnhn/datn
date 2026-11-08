@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app.lib.aspects import TOPIC_BY_ASPECT_ID, TRAIT_BY_ASPECT_ID
 from app.models import Deck, Flashcard, Idiom, Quiz, QuizAttempt, Submission, User
@@ -73,7 +73,7 @@ def card_out(card: Flashcard) -> dict:
 def deck_out(deck: Deck, cards: list[Flashcard]) -> dict:
     from app.lib.srs import is_due, is_learned, is_new
 
-    now = datetime.utcnow().astimezone()
+    now = datetime.now(UTC)
     srs_list = [srs_from_card(c) for c in cards]
     return {
         "id": deck.id,

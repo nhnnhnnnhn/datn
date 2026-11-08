@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 QUALITY = {"again": 1, "hard": 3, "good": 4, "easy": 5}
 RELEARN = timedelta(minutes=10)
 
 
 def new_srs(now: datetime | None = None) -> dict:
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     return {
         "ease": 2.5,
         "interval": 0,
@@ -20,7 +20,7 @@ def new_srs(now: datetime | None = None) -> dict:
 
 
 def schedule(srs: dict, rating: str, now: datetime | None = None) -> dict:
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     q = QUALITY[rating]
     ease = float(srs.get("ease", 2.5))
     interval = int(srs.get("interval", 0))
@@ -56,13 +56,13 @@ def is_new(srs: dict) -> bool:
 
 
 def is_due(srs: dict, now: datetime | None = None) -> bool:
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     due = srs.get("due")
     if not due:
         return True
     due_dt = datetime.fromisoformat(due.replace("Z", "+00:00"))
     if due_dt.tzinfo is None:
-        due_dt = due_dt.replace(tzinfo=timezone.utc)
+        due_dt = due_dt.replace(tzinfo=UTC)
     return due_dt <= now
 
 

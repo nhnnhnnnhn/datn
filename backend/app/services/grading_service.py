@@ -14,12 +14,7 @@ def grade(db: Session, user: User, idiom_id: int, answer: str) -> dict:
     if not answer:
         raise HTTPException(status_code=400, detail="Bài làm đang để trống")
 
-    idiom = (
-        db.query(Idiom)
-        .options(joinedload(Idiom.aspects))
-        .filter(Idiom.id == idiom_id)
-        .first()
-    )
+    idiom = db.query(Idiom).options(joinedload(Idiom.aspects)).filter(Idiom.id == idiom_id).first()
     if not idiom:
         raise HTTPException(status_code=404, detail="Không tìm thấy thành ngữ")
 

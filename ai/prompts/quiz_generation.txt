@@ -1,0 +1,2 @@
+Quiz questions are generated rule-based from VIVID labels
+(see ai/generation/quiz_generator.py). No LLM prompt is required.

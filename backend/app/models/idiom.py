@@ -15,7 +15,10 @@ class Idiom(Base):
     type: Mapped[IdiomType] = mapped_column(Enum(IdiomType, name="idiom_type"), nullable=False)
     meaning: Mapped[str] = mapped_column(Text, nullable=False)
     example_usage: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
 
     aspects = relationship("IdiomAspect", secondary="idiom_aspect_map", back_populates="idioms")
     submissions = relationship("Submission", back_populates="idiom")
@@ -25,7 +28,9 @@ class Idiom(Base):
 
 class IdiomAspect(Base):
     __tablename__ = "idiom_aspects"
-    __table_args__ = (UniqueConstraint("name", "aspect", "type", name="uq_idiom_aspects_name_aspect_type"),)
+    __table_args__ = (
+        UniqueConstraint("name", "aspect", "type", name="uq_idiom_aspects_name_aspect_type"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(150), nullable=False)

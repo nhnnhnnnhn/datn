@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
@@ -68,22 +68,30 @@ def generate_deck(db: Session, user: User, config: dict) -> dict:
             best[idiom_id] = min(val, best.get(idiom_id, val)) if idiom_id in best else val
         weak_ids = [i for i, s in best.items() if s <= 3]
         if not weak_ids:
-            raise HTTPException(status_code=400, detail="Không có câu nào phù hợp với tiêu chí đã chọn")
+            raise HTTPException(
+                status_code=400,
+                detail="Không có câu nào phù hợp với tiêu chí đã chọn",
+            )
         query = query.filter(Idiom.id.in_(weak_ids))
         criteria_bits.append("những câu bạn đạt điểm thấp khi luyện viết")
     else:
         if topic and topic in ASPECT_ID_BY_TOPIC:
-            query = query.join(IdiomAspectMap).filter(IdiomAspectMap.aspect_id == ASPECT_ID_BY_TOPIC[topic])
-            criteria_bits.append(f'chủ đề “{TOPIC_LABELS[topic]}”')
+            aspect_id = ASPECT_ID_BY_TOPIC[topic]
+            query = query.join(IdiomAspectMap).filter(IdiomAspectMap.aspect_id == aspect_id)
+            criteria_bits.append(f"chủ đề “{TOPIC_LABELS[topic]}”")
         if trait and trait in ASPECT_ID_BY_TRAIT:
-            query = query.join(IdiomAspectMap).filter(IdiomAspectMap.aspect_id == ASPECT_ID_BY_TRAIT[trait])
-            criteria_bits.append(f'đặc trưng “{TRAIT_LABELS[trait]}”')
+            aspect_id = ASPECT_ID_BY_TRAIT[trait]
+            query = query.join(IdiomAspectMap).filter(IdiomAspectMap.aspect_id == aspect_id)
+            criteria_bits.append(f"đặc trưng “{TRAIT_LABELS[trait]}”")
         if not criteria_bits:
             criteria_bits.append("toàn bộ kho")
 
     idioms = query.distinct().order_by(Idiom.id).all()
     if not idioms:
-        raise HTTPException(status_code=400, detail="Không có câu nào phù hợp với tiêu chí đã chọn")
+        raise HTTPException(
+            status_code=400,
+            detail="Không có câu nào phù hợp với tiêu chí đã chọn",
+        )
 
     import random
 
@@ -110,7 +118,7 @@ def generate_deck(db: Session, user: User, config: dict) -> dict:
     db.add(deck)
     db.flush()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for idiom in idioms:
         srs = new_srs(now)
         db.add(
@@ -135,11 +143,13 @@ def delete_deck(db: Session, user: User, deck_id: str) -> None:
     deck = db.query(Deck).filter(Deck.id == deck_id, Deck.user_id == user.id).first()
     if not deck or deck.source != "ai":
         raise HTTPException(status_code=400, detail="Chỉ xoá được bộ thẻ tự tạo")
-    db.query(FlashcardReview).filter(
-        FlashcardReview.flashcard_id.in_(
-            db.query(Flashcard.id).filter(Flashcard.deck_id == deck_id, Flashcard.user_id == user.id)
-        )
-    ).delete(synchronize_session=False)
+    card_ids = db.query(Flashcard.id).filter(
+        Flashcard.deck_id == deck_id,
+        Flashcard.user_id == user.id,
+    )
+    db.query(FlashcardReview).filter(FlashcardReview.flashcard_id.in_(card_ids)).delete(
+        synchronize_session=False
+    )
     db.query(Flashcard).filter(Flashcard.deck_id == deck_id, Flashcard.user_id == user.id).delete()
     db.delete(deck)
     db.commit()

@@ -20,6 +20,6 @@ class JsonText(TypeDecorator):
     def process_result_value(self, value, dialect):
         if value is None or value == "":
             return None
-        if isinstance(value, (dict, list)):
+        if isinstance(value, dict | list):
             return value
         return json.loads(value)
