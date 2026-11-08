@@ -12,6 +12,12 @@ previous=$(cat .deployed-tag 2>/dev/null || true)
 echo "[DEPLOY] pulling images tag=$IMAGE_TAG previous=${previous:-none}"
 $compose pull
 
+echo "[DEPLOY] migrating database"
+# Starts db (waits for healthy) and stops before up, so a failed migration leaves the old app running
+if ! $compose run --rm backend alembic upgrade head; then
+  echo "[ERROR] [DEPLOY] migration failed tag=$IMAGE_TAG"
+  exit 1
+fi
 echo "[DEPLOY] starting services"
 if ! $compose up -d --remove-orphans --wait --wait-timeout 180; then
   echo "[ERROR] [DEPLOY] services not healthy tag=$IMAGE_TAG"

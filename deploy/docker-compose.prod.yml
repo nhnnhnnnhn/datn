@@ -5,7 +5,7 @@ services:
     image: postgres:18.6
     restart: unless-stopped
     environment:
-      POSTGRES_USER: vivid
+      POSTGRES_USER: datn
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: public
     command:
@@ -29,7 +29,7 @@ services:
       - ./certs:/certs:ro
       - ./pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U vivid -d public"]
+      test: ["CMD-SHELL", "pg_isready -U datn -d public"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -39,7 +39,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://vivid:${POSTGRES_PASSWORD}@db:5432/public?sslmode=require
+      DATABASE_URL: postgresql://datn:${POSTGRES_PASSWORD}@db:5432/public?sslmode=require
       ROOT_PATH: /api
       LOG_TO_CLIENT: "false"
     depends_on:
