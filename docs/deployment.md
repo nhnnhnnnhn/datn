@@ -174,11 +174,11 @@ client so they can verify the server (`sslmode=verify-full`). Never share `serve
 
 ### One login per person
 
-After the deploy, create a role for each person instead of sharing `vivid` (the app's owner role):
+After the deploy, create a role for each person instead of sharing `datn` (the app's owner role):
 
 ```bash
 cd /opt/vivid-learn
-IMAGE_TAG=$(cat .deployed-tag) docker compose -f docker-compose.prod.yml exec db psql -U vivid -d public
+IMAGE_TAG=$(cat .deployed-tag) docker compose -f docker-compose.prod.yml exec db psql -U datn -d public
 ```
 
 ```sql
@@ -187,9 +187,9 @@ GRANT CONNECT ON DATABASE public TO friend;
 GRANT USAGE ON SCHEMA public TO friend;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO friend;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO friend;
-ALTER DEFAULT PRIVILEGES FOR ROLE vivid IN SCHEMA public
+ALTER DEFAULT PRIVILEGES FOR ROLE datn IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO friend;
-ALTER DEFAULT PRIVILEGES FOR ROLE vivid IN SCHEMA public
+ALTER DEFAULT PRIVILEGES FOR ROLE datn IN SCHEMA public
   GRANT USAGE, SELECT ON SEQUENCES TO friend;
 ```
 

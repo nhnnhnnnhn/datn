@@ -12,7 +12,9 @@ services:
       - pgdata18:/var/lib/postgresql
 
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     env_file: ./backend/.env
     ports:
       - "8000:8000"
