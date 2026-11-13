@@ -34,8 +34,8 @@ export default function AssignmentNew() {
 
   const classes = useQuery({ queryKey: ['classes'], queryFn: api.classes.list, meta: { tag: 'CLASS' } })
   const idioms = useQuery({
-    queryKey: ['idioms', { q, topic, trait, pageSize: 200 }],
-    queryFn: () => api.idioms.list({ q, topic: topic || undefined, trait: trait || undefined, pageSize: 200 }),
+    queryKey: ['idioms', { q, topic, trait, pageSize: 100 }],
+    queryFn: () => api.idioms.list({ q, topic: topic || undefined, trait: trait || undefined, pageSize: 100 }),
     meta: { tag: 'IDIOM' },
   })
 
@@ -90,7 +90,7 @@ export default function AssignmentNew() {
         </div>
       </div>
 
-      <fieldset className="mt-8">
+      <fieldset className="mt-8 min-w-0">
         <legend className="text-base font-semibold text-stone-900">
           Chọn câu <span className="font-normal text-stone-500">— đã chọn {picked.length}</span>
         </legend>

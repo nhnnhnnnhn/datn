@@ -6,6 +6,7 @@ import { AuthProvider } from '@/context/AuthContext'
 import { installGlobalErrorLogging } from '@/lib/logger'
 import { USE_MOCK } from '@/lib/constants'
 import { queryClient } from '@/lib/queryClient'
+import { Toaster } from '@/components/ui/Toaster'
 import App from './App'
 import './index.css'
 
@@ -24,6 +25,7 @@ createRoot(document.getElementById('root')!).render(
           <App />
         </AuthProvider>
       </BrowserRouter>
+      <Toaster />
     </QueryClientProvider>
   </StrictMode>,
 )
