@@ -7,9 +7,33 @@ from app.services import quiz_service
 router = APIRouter(prefix="/quizzes", tags=["quizzes"])
 
 
+@router.get("")
+def list_quizzes(
+    db: DbSession,
+    user: CurrentUser,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100, alias="pageSize"),
+):
+    return quiz_service.list_quizzes(db, user, page=page, page_size=page_size)
+
+
 @router.post("/generate")
 def generate(body: QuizConfigIn, db: DbSession, user: CurrentUser):
     return quiz_service.generate(db, user, body.model_dump(by_alias=True))
+
+
+@router.get("/history")
+def history(
+    db: DbSession,
+    user: CurrentUser,
+    limit: int = Query(20, ge=1, le=100),
+):
+    return quiz_service.history(db, user, limit)
+
+
+@router.get("/{quiz_id}")
+def get_quiz(quiz_id: str, db: DbSession, user: CurrentUser):
+    return quiz_service.get_quiz(db, user, quiz_id)
 
 
 @router.post("/{quiz_id}/submit")
@@ -21,12 +45,3 @@ def submit(
 ):
     answers = [a.model_dump(by_alias=True) for a in body.answers]
     return quiz_service.submit(db, user, quiz_id, answers, body.duration_sec)
-
-
-@router.get("/history")
-def history(
-    db: DbSession,
-    user: CurrentUser,
-    limit: int = Query(20, ge=1, le=100),
-):
-    return quiz_service.history(db, user, limit)

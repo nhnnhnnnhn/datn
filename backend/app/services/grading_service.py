@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import os
+
 from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import get_settings
-from app.lib.serializers import grading_out
+from app.lib.serializers import grading_out, idiom_out
 from app.models import Idiom, Submission, User
 from app.services.ai_path import ensure_ai_on_path
 
@@ -22,21 +24,38 @@ def grade(db: Session, user: User, idiom_id: int, answer: str) -> dict:
     from ai.grading.evaluator import grade_explanation
 
     settings = get_settings()
+    if settings.llm_api_key:
+        os.environ.setdefault("LLM_API_KEY", settings.llm_api_key)
+    if settings.llm_model:
+        os.environ["LLM_MODEL"] = settings.llm_model
+    if settings.llm_base_url:
+        os.environ.setdefault("LLM_BASE_URL", settings.llm_base_url)
+
+    meta = idiom_out(idiom)
     result = grade_explanation(
         idiom.phrase,
         idiom.meaning,
         answer,
-        model=settings.llm_model or "gpt-4o-mini",
+        model=settings.llm_model or None,
         api_key=settings.llm_api_key or None,
+        base_url=settings.llm_base_url or None,
+        traits=meta.get("traits") or [],
+        topic=meta.get("topic"),
     )
 
+    method = result.get("method") or "heuristic"
     payload = {
         "phrase": idiom.phrase,
         "reference": idiom.meaning,
         "scores": result["scores"],
         "overall": result["overall"],
         "feedback": result["feedback"],
+        "method": method,
     }
+
+    ai_model = settings.llm_model if method.startswith("llm") else f"heuristic:{method}"
+    if method == "heuristic_fallback":
+        ai_model = f"fallback:{settings.llm_model or 'unknown'}"
 
     sub = Submission(
         user_id=user.id,
@@ -48,7 +67,7 @@ def grade(db: Session, user: User, idiom_id: int, answer: str) -> dict:
         fluency_score=result["scores"]["fluency"],
         overall_score=result["overall"],
         feedback=payload,
-        ai_model=settings.llm_model or "heuristic",
+        ai_model=ai_model,
     )
     db.add(sub)
     db.commit()

@@ -2,13 +2,14 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class QuizConfigIn(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, extra="ignore")
 
     count: int = Field(ge=1, le=50, default=10)
     types: list[str] = Field(default_factory=lambda: ["meaning", "reverse", "fill_blank"])
     topic: str | None = None
     trait: str | None = None
-    deck_id: str | None = Field(default=None, alias="deckId")
+    # true → LLM-assisted questions; false → rule-based. Omit → QUIZ_USE_LLM from .env
+    ai_generate: bool | None = Field(default=None, alias="AI_generate")
 
 
 class QuizAnswerIn(BaseModel):

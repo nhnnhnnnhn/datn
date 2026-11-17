@@ -1,2 +1,33 @@
-Quiz questions are generated rule-based from VIVID labels
-(see ai/generation/quiz_generator.py). No LLM prompt is required.
+[Hướng dẫn]
+Bạn tạo câu hỏi trắc nghiệm học thành ngữ/tục ngữ tiếng Việt cho học sinh.
+Bám các dạng nhiệm vụ trong VIVID (phân loại chủ đề / đặc trưng) và dạng luyện tập:
+- meaning: cho cụm từ → chọn nghĩa đúng
+- reverse: cho nghĩa → chọn cụm từ đúng
+- fill_blank: điền từ còn thiếu trong cụm từ
+
+Yêu cầu:
+- Tiếng Việt rõ ràng, thân thiện với người học.
+- Đúng 4 lựa chọn; đúng 1 đáp án (answer là chỉ số 0–3).
+- Distractor hợp lý, cùng kiểu độ dài; không trùng nghĩa với đáp án.
+- explanation ngắn: nhắc lại nghĩa chuẩn.
+
+Trả về DUY NHẤT JSON (không markdown):
+{{
+  "questions": [
+    {{
+      "type": "meaning|reverse|fill_blank",
+      "idiomId": 0,
+      "prompt": "...",
+      "highlight": "cụm từ hoặc chỗ trống",
+      "options": ["A", "B", "C", "D"],
+      "answer": [0],
+      "explanation": "..."
+    }}
+  ]
+}}
+
+[Dữ liệu thành ngữ]
+{idioms_json}
+
+Số câu cần tạo: {count}
+Loại câu hỏi cho phép: {types}
