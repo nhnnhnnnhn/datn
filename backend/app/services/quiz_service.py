@@ -1,56 +1,101 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import UTC, datetime
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 
-from app.lib.serializers import idiom_out, quiz_out, quiz_result_out
-from app.models import Flashcard, Idiom, Quiz, QuizAnswer, QuizAttempt, QuizQuestion, User
+from app.core.config import get_settings
+from app.lib.serializers import idiom_out, quiz_out, quiz_result_out, quiz_summary_out
+from app.models import Idiom, Quiz, QuizAnswer, QuizAttempt, QuizQuestion, User
 from app.services.ai_path import ensure_ai_on_path
+
+
+def list_quizzes(db: Session, user: User, *, page: int = 1, page_size: int = 20) -> dict:
+    page = max(1, page)
+    page_size = min(100, max(1, page_size))
+    query = db.query(Quiz).filter(Quiz.user_id == user.id)
+    total = query.count()
+    rows = (
+        query.options(joinedload(Quiz.questions))
+        .order_by(Quiz.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    return {
+        "items": [quiz_summary_out(q) for q in rows],
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+    }
+
+
+def get_quiz(db: Session, user: User, quiz_id: str) -> dict:
+    try:
+        qid = int(quiz_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bài quiz") from exc
+
+    quiz = (
+        db.query(Quiz)
+        .options(joinedload(Quiz.questions))
+        .filter(Quiz.id == qid, Quiz.user_id == user.id)
+        .first()
+    )
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bài quiz")
+    return quiz_out(quiz)
 
 
 def generate(db: Session, user: User, config: dict) -> dict:
     ensure_ai_on_path()
     from ai.generation.quiz_generator import generate_questions
 
+    settings = get_settings()
+    if settings.llm_api_key:
+        os.environ.setdefault("LLM_API_KEY", settings.llm_api_key)
+    if settings.llm_model:
+        os.environ["LLM_MODEL"] = settings.llm_model
+    if settings.llm_base_url:
+        os.environ.setdefault("LLM_BASE_URL", settings.llm_base_url)
+
     count = int(config.get("count") or 10)
     types = config.get("types") or ["meaning", "reverse", "fill_blank"]
     topic = config.get("topic")
     trait = config.get("trait")
-    deck_id = config.get("deckId")
+    # Request body: AI_generate / ai_generate; else QUIZ_USE_LLM from settings
+    if "AI_generate" in config and config.get("AI_generate") is not None:
+        use_llm = bool(config.get("AI_generate"))
+    elif "ai_generate" in config and config.get("ai_generate") is not None:
+        use_llm = bool(config.get("ai_generate"))
+    else:
+        use_llm = settings.quiz_use_llm
 
     all_rows = db.query(Idiom).options(joinedload(Idiom.aspects)).all()
     if not all_rows:
         raise HTTPException(status_code=400, detail="Không có thành ngữ để tạo quiz")
     all_dicts = [idiom_out(i) for i in all_rows]
 
-    if deck_id:
-        idiom_ids = {
-            r[0]
-            for r in db.query(Flashcard.idiom_id)
-            .filter(Flashcard.deck_id == deck_id, Flashcard.user_id == user.id)
-            .all()
-        }
-        if not idiom_ids:
-            raise HTTPException(status_code=400, detail="Bộ thẻ chưa có câu nào")
-        pool_dicts = [d for d in all_dicts if d["id"] in idiom_ids]
-    else:
-        pool_dicts = all_dicts
-
     questions = generate_questions(
-        pool_dicts,
+        all_dicts,
         count=count,
         types=types,
         topic=topic,
         trait=trait,
         all_idioms=all_dicts,
+        use_llm=use_llm,
+        model=settings.llm_model or None,
+        api_key=settings.llm_api_key or None,
+        base_url=settings.llm_base_url or None,
     )
     if not questions:
         raise HTTPException(status_code=400, detail="Không tạo được câu hỏi")
 
-    quiz = Quiz(user_id=user.id, generated_by="ai.quiz_generator", config=config)
+    generated_by = "ai.quiz_generator.llm" if use_llm else "ai.quiz_generator"
+    quiz = Quiz(user_id=user.id, generated_by=generated_by, config=config)
     db.add(quiz)
     db.flush()
 

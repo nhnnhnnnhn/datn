@@ -1,4 +1,4 @@
-"""AI helpers for the Vietnamese idiom learning platform."""
+"""AI helpers for the Vietnamese idiom learning platform (VIVID-aligned)."""
 
 from ai.generation.quiz_generator import generate_questions
 from ai.grading.evaluator import grade_explanation

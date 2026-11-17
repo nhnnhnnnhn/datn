@@ -117,6 +117,17 @@ def grading_out(sub: Submission) -> dict:
     }
 
 
+def quiz_summary_out(quiz: Quiz) -> dict:
+    """List-row shape without full question payloads."""
+    return {
+        "id": str(quiz.id),
+        "config": quiz.config or {},
+        "questionCount": len(quiz.questions or []),
+        "generatedBy": quiz.generated_by,
+        "createdAt": iso(quiz.created_at) or "",
+    }
+
+
 def quiz_out(quiz: Quiz) -> dict:
     questions = []
     for q in quiz.questions:
@@ -142,6 +153,8 @@ def quiz_out(quiz: Quiz) -> dict:
         "id": str(quiz.id),
         "config": quiz.config or {},
         "questions": questions,
+        "generatedBy": quiz.generated_by,
+        "questionCount": len(questions),
         "createdAt": iso(quiz.created_at) or "",
     }
 

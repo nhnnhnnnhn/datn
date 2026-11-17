@@ -1,15 +1,21 @@
 """
-Rule-based quiz generation from VIVID idiom records.
+Quiz generation from VIVID idiom records.
 
-Question types: meaning | reverse | fill_blank | topic | traits
+Default path is rule-based (stable, mirrors VIVID discriminative tasks).
+Optional LLM path can enrich meaning/reverse/fill_blank items when a key is set.
 """
 
 from __future__ import annotations
 
+import json
 import random
 import re
 import unicodedata
+from pathlib import Path
 from typing import Any
+
+from ai.generation.validator import validate_questions
+from ai.llm_client import chat_json, resolve_api_key, resolve_model
 
 TOPIC_LABELS = {
     "criticism": "Phê phán",
@@ -31,6 +37,8 @@ TRAIT_LABELS = {
 }
 
 WEAK_WORDS = {"thì", "có", "là", "mà", "cũng", "như", "một", "nào", "ấy", "cho", "hơn"}
+LLM_TYPES = frozenset({"meaning", "reverse", "fill_blank"})
+_PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "quiz_generation.txt"
 
 
 def _norm(text: str) -> str:
@@ -156,7 +164,7 @@ def build_question(
     return None
 
 
-def generate_questions(
+def generate_questions_rule_based(
     idioms: list[dict[str, Any]],
     *,
     count: int = 10,
@@ -166,7 +174,7 @@ def generate_questions(
     seed: int | None = None,
     all_idioms: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
-    """Build up to `count` quiz questions from a pool of idiom dicts."""
+    """Build up to `count` quiz questions from a pool of idiom dicts (deterministic)."""
     rng = random.Random(seed)
     types = types or ["meaning", "reverse", "fill_blank", "topic", "traits"]
     bank = all_idioms or idioms
@@ -187,4 +195,125 @@ def generate_questions(
         q = build_question(idiom, qtype, bank, rng=rng)
         if q:
             questions.append(q)
-    return questions
+    return validate_questions(questions)
+
+
+def generate_questions_llm(
+    idioms: list[dict[str, Any]],
+    *,
+    count: int = 10,
+    types: list[str] | None = None,
+    model: str | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
+) -> list[dict[str, Any]]:
+    """Ask an LLM for meaning/reverse/fill_blank items; validated before return."""
+    key = resolve_api_key(api_key)
+    if not key:
+        raise RuntimeError("LLM API key required for generate_questions_llm")
+
+    types = [t for t in (types or ["meaning", "reverse", "fill_blank"]) if t in LLM_TYPES]
+    if not types:
+        types = ["meaning", "reverse", "fill_blank"]
+
+    sample = idioms[: max(count * 2, count)]
+    payload = [
+        {
+            "id": i["id"],
+            "phrase": i["phrase"],
+            "explanation": i.get("explanation") or i.get("meaning") or "",
+            "topic": i.get("topic"),
+            "traits": i.get("traits") or [],
+        }
+        for i in sample
+    ]
+    prompt = _PROMPT_PATH.read_text(encoding="utf-8").format(
+        idioms_json=json.dumps(payload, ensure_ascii=False, indent=2),
+        count=count,
+        types=", ".join(types),
+    )
+    data = chat_json(
+        [{"role": "user", "content": prompt}],
+        model=resolve_model(model),
+        api_key=key,
+        base_url=base_url,
+        temperature=0.4,
+        max_tokens=2500,
+    )
+    raw = data.get("questions") if isinstance(data, dict) else None
+    if not isinstance(raw, list):
+        raise ValueError("LLM quiz reply missing questions[]")
+    return validate_questions(raw)[:count]
+
+
+def generate_questions(
+    idioms: list[dict[str, Any]],
+    *,
+    count: int = 10,
+    types: list[str] | None = None,
+    topic: str | None = None,
+    trait: str | None = None,
+    seed: int | None = None,
+    all_idioms: list[dict[str, Any]] | None = None,
+    use_llm: bool = False,
+    model: str | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Generate quiz questions.
+
+    use_llm=False (default): rule-based VIVID-style items (recommended).
+    use_llm=True: try LLM for meaning/reverse/fill_blank, then fill remaining
+    slots with rule-based questions (topic/traits always rule-based).
+    """
+    types = types or ["meaning", "reverse", "fill_blank", "topic", "traits"]
+    bank = all_idioms or idioms
+    pool = list(idioms)
+    if topic:
+        pool = [i for i in pool if i.get("topic") == topic]
+    if trait:
+        pool = [i for i in pool if trait in (i.get("traits") or [])]
+    if not pool:
+        pool = list(bank)
+
+    questions: list[dict[str, Any]] = []
+    llm_types = [t for t in types if t in LLM_TYPES]
+    rule_types = types
+
+    if use_llm and resolve_api_key(api_key) and llm_types:
+        try:
+            llm_count = min(count, max(1, sum(1 for t in types if t in LLM_TYPES)))
+            # Prefer a proportional slice for LLM types
+            llm_count = min(count, max(llm_count, count // 2 or 1))
+            questions = generate_questions_llm(
+                pool,
+                count=llm_count,
+                types=llm_types,
+                model=model,
+                api_key=api_key,
+                base_url=base_url,
+            )
+        except Exception:
+            questions = []
+
+    if len(questions) < count:
+        needed = count - len(questions)
+        used_ids = {(q["idiomId"], q["type"]) for q in questions}
+        extra = generate_questions_rule_based(
+            pool,
+            count=needed + 5,
+            types=rule_types,
+            seed=seed,
+            all_idioms=bank,
+        )
+        for q in extra:
+            key = (q["idiomId"], q["type"])
+            if key in used_ids:
+                continue
+            questions.append(q)
+            used_ids.add(key)
+            if len(questions) >= count:
+                break
+
+    return questions[:count]
