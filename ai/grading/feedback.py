@@ -31,7 +31,7 @@ def compute_overall(scores: dict[str, int]) -> int:
 
 
 def soften_scores(scores: dict[str, int]) -> dict[str, int]:
-    """Bump mid-range partial credit (+1 for scores 1–3); leave 0 / 4–5 alone."""
+    """Bump mid-range partial credit (+1 for scores 1-3); leave 0 / 4-5 alone."""
     out: dict[str, int] = {}
     for k in CRITERIA:
         v = scores.get(k, 0)
@@ -55,7 +55,9 @@ def _clean_issue(raw: Any) -> dict[str, str] | None:
     return {"criterion": criterion, "type": err, "title": title, "detail": detail}
 
 
-def normalize_result(raw: dict[str, Any], *, prefer_weighted_overall: bool = True) -> dict[str, Any]:
+def normalize_result(
+    raw: dict[str, Any], *, prefer_weighted_overall: bool = True
+) -> dict[str, Any]:
     """
     Coerce LLM/heuristic output into the API feedback shape.
     Softens missing fields and applies the VIVID accuracy→0 rule.
@@ -71,22 +73,13 @@ def normalize_result(raw: dict[str, Any], *, prefer_weighted_overall: bool = Tru
         overall = clamp5(raw.get("overall"))
         # Keep LLM overall, but lift it one step when softened scores are higher
         overall = max(overall, compute_overall(scores) - 1)
-        if scores["accuracy"] == 0:
-            overall = 0
-        else:
-            overall = max(overall, 1)
+        overall = 0 if scores["accuracy"] == 0 else max(overall, 1)
 
     fb_in = raw.get("feedback") if isinstance(raw.get("feedback"), dict) else {}
     comments_in = fb_in.get("comments") if isinstance(fb_in.get("comments"), dict) else {}
     comments = {
         k: str(comments_in.get(k) or "").strip()
-        or (
-            "Ổn."
-            if scores[k] >= 4
-            else "Cần cải thiện thêm."
-            if scores[k] >= 2
-            else "Chưa đạt."
-        )
+        or ("Ổn." if scores[k] >= 4 else "Cần cải thiện thêm." if scores[k] >= 2 else "Chưa đạt.")
         for k in CRITERIA
     }
 
@@ -96,16 +89,8 @@ def normalize_result(raw: dict[str, Any], *, prefer_weighted_overall: bool = Tru
         if cleaned:
             issues.append(cleaned)
 
-    strengths = [
-        str(s).strip()
-        for s in (fb_in.get("strengths") or [])
-        if str(s).strip()
-    ][:6]
-    missing = [
-        str(s).strip()
-        for s in (fb_in.get("missingKeywords") or [])
-        if str(s).strip()
-    ][:6]
+    strengths = [str(s).strip() for s in (fb_in.get("strengths") or []) if str(s).strip()][:6]
+    missing = [str(s).strip() for s in (fb_in.get("missingKeywords") or []) if str(s).strip()][:6]
 
     summary = str(fb_in.get("summary") or "").strip()
     if not summary:

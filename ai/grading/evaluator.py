@@ -9,8 +9,9 @@ when no LLM key is available or the call fails.
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from ai.grading.feedback import clamp5, normalize_result
 from ai.grading.rubric import SUMMARY_BY_OVERALL, TRAIT_LABELS
@@ -194,10 +195,7 @@ def grade_heuristic(
             }
         )
 
-    if (
-        ("sino_vietnamese" in traits or "uncommon_vocab" in traits)
-        and accuracy <= 1
-    ):
+    if ("sino_vietnamese" in traits or "uncommon_vocab" in traits) and accuracy <= 1:
         issues.append(
             {
                 "criterion": "accuracy",
@@ -220,7 +218,10 @@ def grade_heuristic(
                     "criterion": "nuance",
                     "type": "pragmatic_flattening",
                     "title": "Chưa nêu thái độ của câu",
-                    "detail": "Câu này mang sắc thái đánh giá. Hãy nói rõ đang chê, mỉa mai hay khuyên răn.",
+                    "detail": (
+                        "Câu này mang sắc thái đánh giá. "
+                        "Hãy nói rõ đang chê, mỉa mai hay khuyên răn."
+                    ),
                 }
             )
     else:
@@ -233,7 +234,9 @@ def grade_heuristic(
                 "criterion": "nuance",
                 "type": "over_interpretation",
                 "title": "Suy diễn sang nghĩa bóng",
-                "detail": "Câu này chủ yếu mô tả kinh nghiệm cụ thể, không cần gắn hàm ý tính cách.",
+                "detail": (
+                    "Câu này chủ yếu mô tả kinh nghiệm cụ thể, không cần gắn hàm ý tính cách."
+                ),
             }
         )
 
@@ -311,7 +314,9 @@ def grade_heuristic(
                         else "Chưa nêu được ngữ cảnh người ta dùng câu này."
                     ),
                     "fluency": (
-                        "Câu văn rõ ràng, mạch lạc." if fluency >= 4 else "Nên viết thành câu hoàn chỉnh, rõ ý."
+                        "Câu văn rõ ràng, mạch lạc."
+                        if fluency >= 4
+                        else "Nên viết thành câu hoàn chỉnh, rõ ý."
                     ),
                     "completeness": (
                         "Bao quát đủ các ý chính."

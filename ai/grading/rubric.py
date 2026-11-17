@@ -11,7 +11,7 @@ CRITERION_LABELS = {
     "completeness": "Độ đầy đủ",
 }
 
-# Learner-facing short descriptions (0–5)
+# Learner-facing short descriptions (0-5)
 CRITERION_GUIDE = {
     "accuracy": "Bạn có nắm đúng ý chính của câu không?",
     "nuance": "Bạn có nêu được thái độ, ngữ cảnh hay hàm ý không?",
@@ -39,7 +39,10 @@ ERROR_TYPES = (
 
 SUMMARY_BY_OVERALL = (
     "Ý nghĩa cốt lõi chưa đúng, nên điểm tổng là 0. Hãy đọc lại nghĩa chuẩn và thử viết lại.",
-    "Ý nghĩa bạn đưa ra còn khác xa nghĩa chuẩn. Tập trung vào điều câu muốn nói về con người hoặc cuộc sống.",
+    (
+        "Ý nghĩa bạn đưa ra còn khác xa nghĩa chuẩn. "
+        "Tập trung vào điều câu muốn nói về con người hoặc cuộc sống."
+    ),
     "Bài làm mới chạm tới một phần ý nghĩa của câu. Bổ sung thêm ý còn thiếu sẽ rõ hơn nhiều.",
     "Đã nắm được ý chính, còn thiếu một số ý hoặc sắc thái. Bạn đang đi đúng hướng!",
     "Nắm đúng ý chính, chỉ cần bổ sung thêm chút ít là rất tốt.",

@@ -50,7 +50,6 @@ def get_quiz(db: Session, user: User, quiz_id: str) -> dict:
     return quiz_out(quiz)
 
 
-
 def generate(db: Session, user: User, config: dict) -> dict:
     ensure_ai_on_path()
     from ai.generation.quiz_generator import generate_questions

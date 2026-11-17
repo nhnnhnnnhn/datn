@@ -16,7 +16,9 @@ _PLACEHOLDER_MODELS = frozenset({"", "default-model", "none", "null"})
 
 
 def resolve_api_key(api_key: str | None = None) -> str | None:
-    key = (api_key or os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_API_KEY") or "").strip()
+    key = (
+        api_key or os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_API_KEY") or ""
+    ).strip()
     if not key or key.lower() in _PLACEHOLDER_KEYS:
         return None
     return key
@@ -31,7 +33,9 @@ def resolve_model(model: str | None = None) -> str | None:
     return None
 
 
-def resolve_base_url(model: str, base_url: str | None = None, api_key: str | None = None) -> str | None:
+def resolve_base_url(
+    model: str, base_url: str | None = None, api_key: str | None = None
+) -> str | None:
     explicit = (base_url or os.environ.get("LLM_BASE_URL") or "").strip()
     if explicit:
         return explicit.rstrip("/")
