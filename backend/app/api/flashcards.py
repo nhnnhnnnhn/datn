@@ -1,4 +1,6 @@
-from fastapi import APIRouter
+from typing import Literal
+
+from fastapi import APIRouter, Query
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.deps import CurrentUser, DbSession
@@ -15,6 +17,16 @@ class DeckGenerateIn(BaseModel):
     topic: str | None = None
     trait: str | None = None
     from_weak: bool = Field(default=False, alias="fromWeak")
+
+
+class ReviewIn(BaseModel):
+    rating: Literal["again", "hard", "good", "easy"]
+
+
+class SaveIdiomIn(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    idiom_id: int = Field(alias="idiomId")
 
 
 @router.get("/decks")
@@ -40,3 +52,23 @@ def delete_deck(deck_id: str, db: DbSession, user: CurrentUser):
 @router.get("/decks/{deck_id}/cards")
 def cards(deck_id: str, db: DbSession, user: CurrentUser):
     return flashcard_service.list_cards(db, user, deck_id)
+
+
+@router.get("/decks/{deck_id}/study")
+def study(
+    deck_id: str,
+    db: DbSession,
+    user: CurrentUser,
+    new_limit: int = Query(default=10, ge=0, le=100, alias="newLimit"),
+):
+    return flashcard_service.study_queue(db, user, deck_id, new_limit)
+
+
+@router.post("/cards/{card_id}/review")
+def review(card_id: int, body: ReviewIn, db: DbSession, user: CurrentUser):
+    return flashcard_service.review_card(db, user, card_id, body.rating)
+
+
+@router.post("/saved")
+def save_idiom(body: SaveIdiomIn, db: DbSession, user: CurrentUser):
+    return flashcard_service.save_idiom(db, user, body.idiom_id)

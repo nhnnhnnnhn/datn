@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 import secrets
 from datetime import UTC, datetime
 
@@ -7,9 +8,9 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 from app.lib.aspects import ASPECT_ID_BY_TOPIC, ASPECT_ID_BY_TRAIT, TOPIC_LABELS, TRAIT_LABELS
-from app.lib.serializers import card_out, deck_out
-from app.lib.srs import new_srs
-from app.models import Deck, Flashcard, FlashcardReview, Idiom, IdiomAspectMap, Submission, User
+from app.lib.serializers import apply_srs, card_out, deck_out, srs_from_card
+from app.lib.srs import is_due, is_new, new_srs, schedule
+from app.models import Deck, Flashcard, FlashcardReview, Idiom, IdiomAspect, Submission, User
 
 
 def _uid(prefix: str = "") -> str:
@@ -77,11 +78,11 @@ def generate_deck(db: Session, user: User, config: dict) -> dict:
     else:
         if topic and topic in ASPECT_ID_BY_TOPIC:
             aspect_id = ASPECT_ID_BY_TOPIC[topic]
-            query = query.join(IdiomAspectMap).filter(IdiomAspectMap.aspect_id == aspect_id)
+            query = query.filter(Idiom.aspects.any(IdiomAspect.id == aspect_id))
             criteria_bits.append(f"chủ đề “{TOPIC_LABELS[topic]}”")
         if trait and trait in ASPECT_ID_BY_TRAIT:
             aspect_id = ASPECT_ID_BY_TRAIT[trait]
-            query = query.join(IdiomAspectMap).filter(IdiomAspectMap.aspect_id == aspect_id)
+            query = query.filter(Idiom.aspects.any(IdiomAspect.id == aspect_id))
             criteria_bits.append(f"đặc trưng “{TRAIT_LABELS[trait]}”")
         if not criteria_bits:
             criteria_bits.append("toàn bộ kho")
@@ -92,8 +93,6 @@ def generate_deck(db: Session, user: User, config: dict) -> dict:
             status_code=400,
             detail="Không có câu nào phù hợp với tiêu chí đã chọn",
         )
-
-    import random
 
     random.shuffle(idioms)
     idioms = idioms[:count]
@@ -137,6 +136,76 @@ def generate_deck(db: Session, user: User, config: dict) -> dict:
         )
     db.commit()
     return get_deck(db, user, deck.id)
+
+
+def study_queue(db: Session, user: User, deck_id: str, new_limit: int) -> list[dict]:
+    get_deck(db, user, deck_id)
+    now = datetime.now(UTC)
+    cards = _cards_for(db, deck_id, user.id)
+    due = sorted(
+        (c for c in cards if not is_new(srs_from_card(c)) and is_due(srs_from_card(c), now)),
+        key=lambda c: c.due_at,
+    )
+    fresh = [c for c in cards if is_new(srs_from_card(c))]
+    random.shuffle(fresh)
+    return [card_out(c) for c in [*due, *fresh[:new_limit]]]
+
+
+def review_card(db: Session, user: User, card_id: int, rating: str) -> dict:
+    card = _own_card(db, user, card_id)
+    apply_srs(card, schedule(srs_from_card(card), rating))
+    db.add(FlashcardReview(flashcard_id=card.id, rating=rating, reviewed_at=datetime.now(UTC)))
+    db.commit()
+    return card_out(card)
+
+
+def save_idiom(db: Session, user: User, idiom_id: int) -> dict:
+    idiom = db.get(Idiom, idiom_id)
+    if not idiom:
+        raise HTTPException(status_code=404, detail="Không tìm thấy thành ngữ")
+
+    deck_id = f"saved-{user.id}"
+    if not db.get(Deck, deck_id):
+        db.add(
+            Deck(
+                id=deck_id,
+                user_id=user.id,
+                name="Câu đã lưu",
+                description="Những câu bạn lưu khi tra cứu hoặc luyện viết.",
+                source="saved",
+            )
+        )
+        db.flush()
+
+    card = (
+        db.query(Flashcard)
+        .filter(Flashcard.deck_id == deck_id, Flashcard.idiom_id == idiom_id)
+        .first()
+    )
+    if not card:
+        card = Flashcard(
+            user_id=user.id,
+            idiom_id=idiom_id,
+            deck_id=deck_id,
+            front=idiom.phrase,
+            back=idiom.meaning,
+        )
+        apply_srs(card, new_srs())
+        db.add(card)
+        db.commit()
+    return card_out(_own_card(db, user, card.id))
+
+
+def _own_card(db: Session, user: User, card_id: int) -> Flashcard:
+    card = (
+        db.query(Flashcard)
+        .options(joinedload(Flashcard.idiom).joinedload(Idiom.aspects))
+        .filter(Flashcard.id == card_id, Flashcard.user_id == user.id)
+        .first()
+    )
+    if not card:
+        raise HTTPException(status_code=404, detail="Không tìm thấy thẻ")
+    return card
 
 
 def delete_deck(db: Session, user: User, deck_id: str) -> None:
