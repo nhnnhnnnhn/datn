@@ -31,6 +31,16 @@ TOPIC_LABELS = {
     "other": "Khác",
 }
 
+TOPIC_DESCRIPTIONS = {
+    "criticism": "Phê phán, châm biếm thói xấu và hành vi tiêu cực",
+    "life_lessons": "Triết lý, lời khuyên và bài học về cách sống",
+    "work_nature": "Kinh nghiệm sản xuất, lao động, thời tiết và tự nhiên",
+    "social": "Gia đình, làng xóm, bạn bè và các mối quan hệ",
+    "love": "Tình yêu đôi lứa và hôn nhân",
+    "virtues": "Ca ngợi phẩm chất, đạo đức tốt đẹp của con người",
+    "other": "Các chủ đề khác",
+}
+
 TRAIT_LABELS = {
     "literal": "Nghĩa đen",
     "pragmatic": "Sắc thái ngữ dụng",

@@ -62,3 +62,13 @@ def test_save_idiom_is_idempotent_and_lands_in_saved_deck(client):
 
 def test_save_unknown_idiom_is_404(client):
     assert client.post("/flashcards/saved", json={"idiomId": 9999}).status_code == 404
+
+
+def test_new_user_gets_saved_and_topic_decks_once(client):
+    decks = client.get("/flashcards/decks").json()
+    by_source = {d["source"]: d for d in decks}
+    assert set(by_source) == {"saved", "topic"}
+    assert by_source["topic"]["topic"] == "love" and by_source["topic"]["cardCount"] == 3
+    assert by_source["saved"]["cardCount"] == 0
+
+    assert len(client.get("/flashcards/decks").json()) == len(decks)

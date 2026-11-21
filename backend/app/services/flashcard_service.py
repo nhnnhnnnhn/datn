@@ -5,9 +5,16 @@ import secrets
 from datetime import UTC, datetime
 
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from app.lib.aspects import ASPECT_ID_BY_TOPIC, ASPECT_ID_BY_TRAIT, TOPIC_LABELS, TRAIT_LABELS
+from app.lib.aspects import (
+    ASPECT_ID_BY_TOPIC,
+    ASPECT_ID_BY_TRAIT,
+    TOPIC_DESCRIPTIONS,
+    TOPIC_LABELS,
+    TRAIT_LABELS,
+)
 from app.lib.serializers import apply_srs, card_out, deck_out, srs_from_card
 from app.lib.srs import is_due, is_new, new_srs, schedule
 from app.models import Deck, Flashcard, FlashcardReview, Idiom, IdiomAspect, Submission, User
@@ -26,7 +33,63 @@ def _cards_for(db: Session, deck_id: str, user_id: int) -> list[Flashcard]:
     )
 
 
+def _saved_deck(db: Session, user: User) -> Deck:
+    deck_id = f"saved-{user.id}"
+    deck = db.get(Deck, deck_id)
+    if not deck:
+        deck = Deck(
+            id=deck_id,
+            user_id=user.id,
+            name="Câu đã lưu",
+            description="Những câu bạn lưu khi tra cứu hoặc luyện viết.",
+            source="saved",
+        )
+        db.add(deck)
+        db.flush()
+    return deck
+
+
+def _ensure_default_decks(db: Session, user: User) -> None:
+    has_topic_decks = (
+        db.query(Deck.id).filter(Deck.user_id == user.id, Deck.source == "topic").first()
+    )
+    if has_topic_decks:
+        return
+
+    _saved_deck(db, user)
+    now = datetime.now(UTC)
+    for topic, aspect_id in ASPECT_ID_BY_TOPIC.items():
+        idioms = db.query(Idiom).filter(Idiom.aspects.any(IdiomAspect.id == aspect_id)).all()
+        if not idioms:
+            continue
+        deck = Deck(
+            id=f"topic-{user.id}-{topic}",
+            user_id=user.id,
+            name=TOPIC_LABELS[topic],
+            description=TOPIC_DESCRIPTIONS[topic],
+            source="topic",
+            topic=topic,
+        )
+        db.add(deck)
+        db.flush()
+        for idiom in idioms:
+            card = Flashcard(
+                user_id=user.id,
+                idiom_id=idiom.id,
+                deck_id=deck.id,
+                front=idiom.phrase,
+                back=idiom.meaning,
+            )
+            apply_srs(card, new_srs(now))
+            db.add(card)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+
+
 def list_decks(db: Session, user: User) -> list[dict]:
+    _ensure_default_decks(db, user)
     decks = db.query(Deck).filter(Deck.user_id == user.id).all()
     order = {"saved": 0, "ai": 1, "topic": 2}
     views = [deck_out(d, _cards_for(db, d.id, user.id)) for d in decks]
@@ -164,18 +227,7 @@ def save_idiom(db: Session, user: User, idiom_id: int) -> dict:
     if not idiom:
         raise HTTPException(status_code=404, detail="Không tìm thấy thành ngữ")
 
-    deck_id = f"saved-{user.id}"
-    if not db.get(Deck, deck_id):
-        db.add(
-            Deck(
-                id=deck_id,
-                user_id=user.id,
-                name="Câu đã lưu",
-                description="Những câu bạn lưu khi tra cứu hoặc luyện viết.",
-                source="saved",
-            )
-        )
-        db.flush()
+    deck_id = _saved_deck(db, user).id
 
     card = (
         db.query(Flashcard)
