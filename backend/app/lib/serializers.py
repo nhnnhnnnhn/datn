@@ -30,13 +30,17 @@ def idiom_out(idiom: Idiom) -> dict:
         elif aspect.id in TRAIT_BY_ASPECT_ID:
             traits.append(TRAIT_BY_ASPECT_ID[aspect.id])
 
-    return {
+    out = {
         "id": idiom.id,
         "phrase": idiom.phrase,
         "explanation": idiom.meaning,
         "topic": topic,
         "traits": traits,
     }
+    for key in ("glossary", "note", "citation"):
+        if value := getattr(idiom, key):
+            out[key] = value
+    return out
 
 
 def srs_from_card(card: Flashcard) -> dict:

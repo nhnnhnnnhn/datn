@@ -4,6 +4,7 @@ from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, Unique
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.db.types import JsonText
 from app.models.enums import AspectType, IdiomType
 
 
@@ -15,6 +16,9 @@ class Idiom(Base):
     type: Mapped[IdiomType] = mapped_column(Enum(IdiomType, name="idiom_type"), nullable=False)
     meaning: Mapped[str] = mapped_column(Text, nullable=False)
     example_usage: Mapped[str | None] = mapped_column(Text)
+    glossary: Mapped[list | None] = mapped_column(JsonText)
+    note: Mapped[str | None] = mapped_column(Text)
+    citation: Mapped[dict | None] = mapped_column(JsonText)
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
