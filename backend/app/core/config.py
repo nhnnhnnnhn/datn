@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://postgres:postgres@localhost:5432/public"
     secret_key: str = "default-secret-key"
     access_token_expire_minutes: int = 60
+    password_reset_expire_minutes: int = 30
+    # No SMTP yet: when true, forgot-password includes resetToken in the JSON response.
+    expose_reset_token: bool = True
     # Empty = heuristic grading / rule-based quizzes (no LLM call)
     llm_api_key: str = ""
     # Set in .env (e.g. google/gemini-3.1-flash-lite on OpenRouter)
