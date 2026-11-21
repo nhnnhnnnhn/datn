@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.lib.aspects import ASPECT_ID_BY_TOPIC, ASPECT_ID_BY_TRAIT, TOPIC_LABELS, TRAIT_LABELS
 from app.lib.serializers import card_out, deck_out
 from app.lib.srs import new_srs
-from app.models import Deck, Flashcard, FlashcardReview, Idiom, IdiomAspectMap, Submission, User
+from app.models import Deck, Flashcard, FlashcardReview, Idiom, IdiomAspect, Submission, User
 
 
 def _uid(prefix: str = "") -> str:
@@ -77,11 +77,11 @@ def generate_deck(db: Session, user: User, config: dict) -> dict:
     else:
         if topic and topic in ASPECT_ID_BY_TOPIC:
             aspect_id = ASPECT_ID_BY_TOPIC[topic]
-            query = query.join(IdiomAspectMap).filter(IdiomAspectMap.aspect_id == aspect_id)
+            query = query.filter(Idiom.aspects.any(IdiomAspect.id == aspect_id))
             criteria_bits.append(f"chủ đề “{TOPIC_LABELS[topic]}”")
         if trait and trait in ASPECT_ID_BY_TRAIT:
             aspect_id = ASPECT_ID_BY_TRAIT[trait]
-            query = query.join(IdiomAspectMap).filter(IdiomAspectMap.aspect_id == aspect_id)
+            query = query.filter(Idiom.aspects.any(IdiomAspect.id == aspect_id))
             criteria_bits.append(f"đặc trưng “{TRAIT_LABELS[trait]}”")
         if not criteria_bits:
             criteria_bits.append("toàn bộ kho")
