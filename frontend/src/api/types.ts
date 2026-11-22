@@ -8,6 +8,7 @@ import type {
   Deck,
   DeckGenerateConfig,
   Flashcard,
+  ForgotPasswordResponse,
   GradingResult,
   Idiom,
   IdiomQuery,
@@ -28,6 +29,8 @@ export interface Api {
   auth: {
     login(email: string, password: string): Promise<AuthResponse>
     register(name: string, email: string, password: string, role: Role): Promise<AuthResponse>
+    forgotPassword(email: string): Promise<ForgotPasswordResponse>
+    resetPassword(token: string, password: string): Promise<AuthResponse>
     me(): Promise<User>
     logout(): Promise<void>
   }
