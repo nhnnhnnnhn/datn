@@ -52,6 +52,8 @@ today; the backend may add more.
 |---|---|---|---|---|
 | POST | `/auth/login` | `{ email, password }` | `AuthResponse` `{ token, user: User }` | 400 invalid input, 401 wrong credentials |
 | POST | `/auth/register` | `{ name, email, password, role: 'student' \| 'teacher' }` | `AuthResponse` | 400 invalid input, 409 email taken |
+| PATCH | `/auth/me` | `{ name?, dailyGoal? }` (`dailyGoal` 1–100) | `User` | 400 invalid input, 401 |
+| POST | `/auth/change-password` | `{ currentPassword, newPassword }` | 204 | 400 wrong current password or short new one, 401 |
 | POST | `/auth/forgot-password` | `{ email }` | `{ message }` | 400 invalid email |
 | POST | `/auth/reset-password` | `{ token, password }` | `AuthResponse` (signs the user in) | 400 invalid or expired token, short password |
 | GET | `/auth/me` | — | `User` | 401 |

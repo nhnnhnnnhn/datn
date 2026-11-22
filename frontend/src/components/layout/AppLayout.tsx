@@ -69,6 +69,9 @@ function UserMenu() {
               {user.role === 'teacher' ? 'Giáo viên' : 'Học sinh'} · {user.email}
             </div>
           </div>
+          <Link to="/profile" className="block px-3 py-2 text-stone-700 hover:bg-stone-50">
+            Hồ sơ
+          </Link>
           <button onClick={logout} className="w-full px-3 py-2 text-left text-stone-700 hover:bg-stone-50">
             Đăng xuất
           </button>

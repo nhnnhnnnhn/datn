@@ -9,6 +9,9 @@ export const httpApi: Api = {
     forgotPassword: (email) => request('POST', '/auth/forgot-password', { body: { email } }),
     resetPassword: (token, password) => request('POST', '/auth/reset-password', { body: { token, password } }),
     me: () => request('GET', '/auth/me'),
+    updateProfile: (input) => request('PATCH', '/auth/me', { body: input }),
+    changePassword: (currentPassword, newPassword) =>
+      request('POST', '/auth/change-password', { body: { currentPassword, newPassword } }),
     // Stateless JWT: logging out only drops the client-side token
     logout: async () => {},
   },

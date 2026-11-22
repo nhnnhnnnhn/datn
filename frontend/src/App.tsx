@@ -23,6 +23,7 @@ import ClassDetail from '@/pages/teacher/ClassDetail'
 import AssignmentNew from '@/pages/teacher/AssignmentNew'
 import AssignmentReview from '@/pages/teacher/AssignmentReview'
 import NotFound from '@/pages/NotFound'
+import Profile from '@/pages/Profile'
 
 const log = createLogger('ROUTER')
 
@@ -69,6 +70,7 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="idioms" element={<Idioms />} />
           <Route path="idioms/:id" element={<IdiomDetail />} />
+          <Route path="profile" element={<Profile />} />
           <Route element={<RequireRole role="student" />}>
             <Route index element={<Dashboard />} />
             <Route path="practice" element={<Practice />} />

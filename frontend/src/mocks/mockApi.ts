@@ -103,6 +103,28 @@ const rawMockApi: Api = {
       write('reset-codes', codes)
       return startSession(withRole(user))
     },
+    async updateProfile(input) {
+      await delay(300)
+      const user = currentUser()
+      const name = input.name === undefined ? user.name : input.name.trim()
+      if (!name) throw new ApiError(400, 'Vui lòng nhập họ tên')
+      const dailyGoal = input.dailyGoal ?? user.dailyGoal
+      if (!Number.isInteger(dailyGoal) || dailyGoal < 1 || dailyGoal > 100) {
+        throw new ApiError(400, 'Mục tiêu mỗi ngày phải từ 1 đến 100')
+      }
+      const updated: User = { ...user, name, dailyGoal }
+      const users = read<Record<string, User>>('users', {})
+      write('users', { ...users, [user.email]: updated })
+      write('session', updated)
+      return updated
+    },
+    // The mock keeps no passwords, so only the new one is validated
+    async changePassword(currentPassword, newPassword) {
+      await delay(400)
+      currentUser()
+      if (!currentPassword) throw new ApiError(400, 'Vui lòng nhập mật khẩu hiện tại')
+      if (newPassword.length < 6) throw new ApiError(400, 'Mật khẩu cần tối thiểu 6 ký tự')
+    },
     async me() {
       await delay(100)
       try {

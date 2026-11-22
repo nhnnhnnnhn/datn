@@ -1,11 +1,11 @@
 import { http, HttpResponse } from 'msw/http'
 import { delay } from 'msw/utils/delay'
 import { ApiError, BASE_URL } from '@/api/client'
-import type { AssignmentInput, DeckGenerateConfig, QuizAnswer, QuizConfig, ReviewRating, Role, SubmissionReview, TopicId, TraitId, User } from '@/types'
+import type { AssignmentInput, DeckGenerateConfig, QuizAnswer, QuizConfig, ReviewRating, SignUpRole, SubmissionReview, ProfileUpdate, TopicId, TraitId, User } from '@/types'
 import { mockApi } from './mockApi'
 import { read, write } from './store'
 
-type Method = 'get' | 'post' | 'delete'
+type Method = 'get' | 'post' | 'patch' | 'delete'
 
 interface Ctx {
   params: Record<string, string>
@@ -62,7 +62,7 @@ export const handlers = [
     return mockApi.auth.login(email, password)
   }, { auth: false }),
   route('post', '/auth/register', async ({ request }) => {
-    const { name, email, password, role } = await body<{ name: string; email: string; password: string; role: Role }>(request)
+    const { name, email, password, role } = await body<{ name: string; email: string; password: string; role: SignUpRole }>(request)
     return mockApi.auth.register(name, email, password, role)
   }, { auth: false }),
   route('post', '/auth/forgot-password', async ({ request }) => {
@@ -74,6 +74,11 @@ export const handlers = [
     return mockApi.auth.resetPassword(token, password)
   }, { auth: false }),
   route('get', '/auth/me', () => mockApi.auth.me()),
+  route('patch', '/auth/me', async ({ request }) => mockApi.auth.updateProfile(await body<ProfileUpdate>(request))),
+  route('post', '/auth/change-password', async ({ request }) => {
+    const { currentPassword, newPassword } = await body<{ currentPassword: string; newPassword: string }>(request)
+    return mockApi.auth.changePassword(currentPassword, newPassword)
+  }),
 
   route('get', '/idioms', ({ query }) =>
     mockApi.idioms.list({

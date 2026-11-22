@@ -40,7 +40,8 @@ export interface Paginated<T> {
   pageSize: number
 }
 
-export type Role = 'student' | 'teacher'
+export type SignUpRole = 'student' | 'teacher'
+export type Role = SignUpRole | 'admin'
 
 export interface User {
   id: string
@@ -49,6 +50,11 @@ export interface User {
   role: Role
   dailyGoal: number
   createdAt: string
+}
+
+export interface ProfileUpdate {
+  name?: string
+  dailyGoal?: number
 }
 
 export interface AuthResponse {

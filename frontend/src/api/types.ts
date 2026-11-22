@@ -13,13 +13,14 @@ import type {
   Idiom,
   IdiomQuery,
   Paginated,
+  ProfileUpdate,
   ProgressSummary,
   Quiz,
   QuizAnswer,
   QuizConfig,
   QuizResult,
   ReviewRating,
-  Role,
+  SignUpRole,
   Submission,
   SubmissionReview,
   User,
@@ -28,10 +29,12 @@ import type {
 export interface Api {
   auth: {
     login(email: string, password: string): Promise<AuthResponse>
-    register(name: string, email: string, password: string, role: Role): Promise<AuthResponse>
+    register(name: string, email: string, password: string, role: SignUpRole): Promise<AuthResponse>
     forgotPassword(email: string): Promise<ForgotPasswordResponse>
     resetPassword(token: string, password: string): Promise<AuthResponse>
     me(): Promise<User>
+    updateProfile(input: ProfileUpdate): Promise<User>
+    changePassword(currentPassword: string, newPassword: string): Promise<void>
     logout(): Promise<void>
   }
   idioms: {

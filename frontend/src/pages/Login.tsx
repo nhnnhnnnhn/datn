@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
-import type { Role } from '@/types'
+import type { SignUpRole } from '@/types'
 import { ApiError } from '@/api/client'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/Button'
@@ -10,7 +10,7 @@ import { USE_MOCK } from '@/lib/constants'
 import { VIVID } from '@/lib/vivid'
 import { cn } from '@/lib/cn'
 
-const DEMO_ACCOUNTS: Record<Role, { name: string; email: string }> = {
+const DEMO_ACCOUNTS: Record<SignUpRole, { name: string; email: string }> = {
   student: { name: 'Học sinh Demo', email: 'demo.hocsinh@vivid.test' },
   teacher: { name: 'Cô Nguyễn Thị Lan', email: 'demo.giaovien@vivid.test' },
 }
@@ -21,7 +21,7 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const [mode, setMode] = useState<'login' | 'register'>('login')
-  const [role, setRole] = useState<Role>('student')
+  const [role, setRole] = useState<SignUpRole>('student')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -49,7 +49,7 @@ export default function Login() {
     run(() => (mode === 'login' ? login(email, password) : register(name, email, password, role)))
   }
 
-  function tryDemo(demoRole: Role) {
+  function tryDemo(demoRole: SignUpRole) {
     const account = DEMO_ACCOUNTS[demoRole]
     run(async () => {
       try {
