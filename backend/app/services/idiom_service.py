@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.lib.aspects import ASPECT_ID_BY_TOPIC, ASPECT_ID_BY_TRAIT
 from app.lib.serializers import idiom_out
-from app.models import Idiom, IdiomAspectMap
+from app.models import Idiom, IdiomAspect
 
 
 def _norm(text: str) -> str:
@@ -43,20 +43,14 @@ def list_idioms(
     query = db.query(Idiom).options(joinedload(Idiom.aspects))
 
     if topic and topic in ASPECT_ID_BY_TOPIC:
-        query = query.join(IdiomAspectMap, IdiomAspectMap.idiom_id == Idiom.id).filter(
-            IdiomAspectMap.aspect_id == ASPECT_ID_BY_TOPIC[topic]
-        )
+        query = query.filter(Idiom.aspects.any(IdiomAspect.id == ASPECT_ID_BY_TOPIC[topic]))
     if trait and trait in ASPECT_ID_BY_TRAIT:
-        query = query.join(IdiomAspectMap, IdiomAspectMap.idiom_id == Idiom.id).filter(
-            IdiomAspectMap.aspect_id == ASPECT_ID_BY_TRAIT[trait]
-        )
+        query = query.filter(Idiom.aspects.any(IdiomAspect.id == ASPECT_ID_BY_TRAIT[trait]))
 
     if q:
         like = f"%{q.strip()}%"
         query = query.filter(or_(Idiom.phrase.ilike(like), Idiom.meaning.ilike(like)))
 
-    # distinct needed when joining aspect map twice conceptually — use subquery style
-    query = query.distinct()
     total = query.count()
     rows = query.order_by(Idiom.phrase.asc()).offset((page - 1) * page_size).limit(page_size).all()
 
@@ -94,11 +88,9 @@ def daily_idiom(db: Session) -> dict:
 def random_idiom(db: Session, topic: str | None = None, trait: str | None = None) -> dict:
     query = db.query(Idiom).options(joinedload(Idiom.aspects))
     if topic and topic in ASPECT_ID_BY_TOPIC:
-        aspect_id = ASPECT_ID_BY_TOPIC[topic]
-        query = query.join(IdiomAspectMap).filter(IdiomAspectMap.aspect_id == aspect_id)
+        query = query.filter(Idiom.aspects.any(IdiomAspect.id == ASPECT_ID_BY_TOPIC[topic]))
     if trait and trait in ASPECT_ID_BY_TRAIT:
-        aspect_id = ASPECT_ID_BY_TRAIT[trait]
-        query = query.join(IdiomAspectMap).filter(IdiomAspectMap.aspect_id == aspect_id)
+        query = query.filter(Idiom.aspects.any(IdiomAspect.id == ASPECT_ID_BY_TRAIT[trait]))
     idiom = query.order_by(func.random()).first()
     if not idiom:
         idiom = db.query(Idiom).options(joinedload(Idiom.aspects)).order_by(func.random()).first()

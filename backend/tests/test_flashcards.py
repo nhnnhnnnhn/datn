@@ -1,54 +1,4 @@
-import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from app.db.base import Base
-from app.db.database import get_db
-from app.main import app
-from app.models import Idiom, IdiomAspect
-from app.models.enums import AspectType, IdiomType
-
-LOVE_ASPECT_ID = 5
-LITERAL_ASPECT_ID = 8
-
-
-@pytest.fixture()
-def client():
-    engine = create_engine(
-        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-    )
-    Base.metadata.create_all(engine)
-    make_session = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-
-    with make_session() as db:
-        love = IdiomAspect(id=LOVE_ASPECT_ID, name="love", aspect="topic", type=AspectType.theme)
-        literal = IdiomAspect(
-            id=LITERAL_ASPECT_ID,
-            name="literal",
-            aspect="trait",
-            type=AspectType.complexity_trait,
-        )
-        for phrase in ("một", "hai", "ba"):
-            idiom = Idiom(phrase=phrase, type=IdiomType.idiom, meaning=f"nghĩa {phrase}")
-            idiom.aspects = [love, literal]
-            db.add(idiom)
-        db.commit()
-
-    def override_db():
-        with make_session() as db:
-            yield db
-
-    app.dependency_overrides[get_db] = override_db
-    with TestClient(app) as c:
-        token = c.post(
-            "/auth/register",
-            json={"name": "A", "email": "a@test.local", "password": "secret12", "role": "student"},
-        ).json()["token"]
-        c.headers["Authorization"] = f"Bearer {token}"
-        yield c
-    app.dependency_overrides.clear()
 
 
 def _new_deck(client: TestClient) -> dict:
@@ -112,3 +62,13 @@ def test_save_idiom_is_idempotent_and_lands_in_saved_deck(client):
 
 def test_save_unknown_idiom_is_404(client):
     assert client.post("/flashcards/saved", json={"idiomId": 9999}).status_code == 404
+
+
+def test_new_user_gets_saved_and_topic_decks_once(client):
+    decks = client.get("/flashcards/decks").json()
+    by_source = {d["source"]: d for d in decks}
+    assert set(by_source) == {"saved", "topic"}
+    assert by_source["topic"]["topic"] == "love" and by_source["topic"]["cardCount"] == 3
+    assert by_source["saved"]["cardCount"] == 0
+
+    assert len(client.get("/flashcards/decks").json()) == len(decks)
