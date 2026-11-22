@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     quiz_use_llm: bool = False
     # Public path prefix when behind nginx (/api → backend). Empty for local :8000.
     root_path: str = ""
+    log_level: str = "INFO"
+    # Dev only: echo each request's backend logs in the X-Debug-Logs response header.
+    log_to_client: bool = False
 
 
 @lru_cache
