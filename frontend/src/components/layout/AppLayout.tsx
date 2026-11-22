@@ -139,11 +139,11 @@ export function AppLayout() {
       </header>
 
 
-      <main className="mx-auto max-w-6xl px-4 pt-6 pb-8 md:pt-8 md:pb-12">
+      <main className="mx-auto max-w-6xl px-4 pt-6 pb-8 md:pt-8 md:pb-24">
         <Outlet />
       </main>
 
-      <footer className="border-t border-stone-200 pb-24 md:pb-0">
+      <footer className="border-t border-stone-200 bg-white pb-24 md:fixed md:inset-x-0 md:bottom-0 md:z-30 md:pb-0">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-1 px-4 py-4 text-xs text-stone-500">
           <p>
             Dữ liệu, nhãn đặc trưng và tiêu chí chấm: <span className="text-stone-700">VIVID ({VIVID.shortCite})</span> · giấy phép {VIVID.license}
