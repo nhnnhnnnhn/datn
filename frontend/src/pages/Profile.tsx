@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/Button'
 import { PageHeader, Panel } from '@/components/ui/Card'
 import { Input, Label } from '@/components/ui/Field'
 import { ErrorMessage } from '@/components/ui/Feedback'
+import { ROLE_LABEL } from '@/lib/role'
 
 const MIN_PASSWORD_LENGTH = 6
-const ROLE_LABEL = { student: 'Học sinh', teacher: 'Giáo viên', admin: 'Quản trị viên' }
 
 function SavedNotice({ children }: { children: string }) {
   return (

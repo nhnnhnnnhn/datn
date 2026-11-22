@@ -1,4 +1,7 @@
 import type {
+  AdminStats,
+  AdminUser,
+  AdminUserQuery,
   Assignment,
   AssignmentInput,
   AuthResponse,
@@ -36,6 +39,11 @@ export interface Api {
     updateProfile(input: ProfileUpdate): Promise<User>
     changePassword(currentPassword: string, newPassword: string): Promise<void>
     logout(): Promise<void>
+  }
+  admin: {
+    stats(): Promise<AdminStats>
+    users(query: AdminUserQuery): Promise<Paginated<AdminUser>>
+    setUserActive(id: string, active: boolean): Promise<AdminUser>
   }
   idioms: {
     list(query: IdiomQuery): Promise<Paginated<Idiom>>

@@ -15,6 +15,11 @@ export const httpApi: Api = {
     // Stateless JWT: logging out only drops the client-side token
     logout: async () => {},
   },
+  admin: {
+    stats: () => request('GET', '/admin/stats'),
+    users: (query) => request('GET', '/admin/users', { query: { ...query } }),
+    setUserActive: (id, active) => request('PATCH', `/admin/users/${id}`, { body: { active } }),
+  },
   idioms: {
     list: (query) => request('GET', '/idioms', { query: { ...query } }),
     get: (id) => request('GET', `/idioms/${id}`),

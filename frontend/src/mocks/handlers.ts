@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw/http'
 import { delay } from 'msw/utils/delay'
 import { ApiError, BASE_URL } from '@/api/client'
-import type { AssignmentInput, DeckGenerateConfig, QuizAnswer, QuizConfig, ReviewRating, SignUpRole, SubmissionReview, ProfileUpdate, TopicId, TraitId, User } from '@/types'
+import type { AssignmentInput, DeckGenerateConfig, QuizAnswer, QuizConfig, ReviewRating, Role, SignUpRole, SubmissionReview, ProfileUpdate, TopicId, TraitId, User } from '@/types'
 import { mockApi } from './mockApi'
 import { read, write } from './store'
 
@@ -78,6 +78,20 @@ export const handlers = [
   route('post', '/auth/change-password', async ({ request }) => {
     const { currentPassword, newPassword } = await body<{ currentPassword: string; newPassword: string }>(request)
     return mockApi.auth.changePassword(currentPassword, newPassword)
+  }),
+
+  route('get', '/admin/stats', () => mockApi.admin.stats()),
+  route('get', '/admin/users', ({ query }) =>
+    mockApi.admin.users({
+      q: str(query.get('q')),
+      role: str<Role>(query.get('role')),
+      page: num(query.get('page')),
+      pageSize: num(query.get('pageSize')),
+    }),
+  ),
+  route('patch', '/admin/users/:id', async ({ params, request }) => {
+    const { active } = await body<{ active: boolean }>(request)
+    return mockApi.admin.setUserActive(params.id, active)
   }),
 
   route('get', '/idioms', ({ query }) =>

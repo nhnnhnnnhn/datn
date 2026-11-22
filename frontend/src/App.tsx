@@ -24,6 +24,8 @@ import AssignmentNew from '@/pages/teacher/AssignmentNew'
 import AssignmentReview from '@/pages/teacher/AssignmentReview'
 import NotFound from '@/pages/NotFound'
 import Profile from '@/pages/Profile'
+import AdminHome from '@/pages/admin/AdminHome'
+import { homePath } from '@/lib/role'
 
 const log = createLogger('ROUTER')
 
@@ -49,7 +51,7 @@ function RequireRole({ role }: { role: Role }) {
   const { user } = useAuth()
   if (user?.role !== role) {
     log.debug('role mismatch, redirecting', { need: role, have: user?.role })
-    return <Navigate to={user?.role === 'teacher' ? '/teacher' : '/'} replace />
+    return <Navigate to={homePath(user?.role)} replace />
   }
   return <Outlet />
 }
@@ -83,6 +85,9 @@ export default function App() {
             <Route path="classes/:id" element={<ClassDetail />} />
             <Route path="assignments/new" element={<AssignmentNew />} />
             <Route path="assignments/:id" element={<AssignmentReview />} />
+          </Route>
+          <Route path="admin" element={<RequireRole role="admin" />}>
+            <Route index element={<AdminHome />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Route>

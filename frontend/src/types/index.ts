@@ -52,6 +52,31 @@ export interface User {
   createdAt: string
 }
 
+export interface AdminUser {
+  id: string
+  name: string
+  email: string
+  role: Role
+  active: boolean
+  createdAt: string
+  lastActiveAt: string | null
+}
+
+export interface AdminUserQuery {
+  q?: string
+  role?: Role
+  page?: number
+  pageSize?: number
+}
+
+export interface AdminStats {
+  users: { total: number; students: number; teachers: number; admins: number; newLast7Days: number }
+  content: { idioms: number }
+  activity: { gradings: number; quizzes: number; flashcardReviews: number }
+  // Last 14 days, oldest first, one entry per day (YYYY-MM-DD)
+  signupsByDay: { date: string; count: number }[]
+}
+
 export interface ProfileUpdate {
   name?: string
   dailyGoal?: number

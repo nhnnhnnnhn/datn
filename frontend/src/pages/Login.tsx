@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Input, Label } from '@/components/ui/Field'
 import { ErrorMessage } from '@/components/ui/Feedback'
 import { USE_MOCK } from '@/lib/constants'
+import { homePath } from '@/lib/role'
 import { VIVID } from '@/lib/vivid'
 import { cn } from '@/lib/cn'
 
@@ -14,6 +15,7 @@ const DEMO_ACCOUNTS: Record<SignUpRole, { name: string; email: string }> = {
   student: { name: 'Học sinh Demo', email: 'demo.hocsinh@vivid.test' },
   teacher: { name: 'Cô Nguyễn Thị Lan', email: 'demo.giaovien@vivid.test' },
 }
+const DEMO_ADMIN_EMAIL = 'demo.quantri@vivid.test'
 const DEMO_PASSWORD = 'demo-password'
 
 export default function Login() {
@@ -29,7 +31,7 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false)
 
   const from = (location.state as { from?: string } | null)?.from
-  if (user) return <Navigate to={from ?? (user.role === 'teacher' ? '/teacher' : '/')} replace />
+  if (user) return <Navigate to={from ?? homePath(user.role)} replace />
 
   async function run(action: () => Promise<void>) {
     setError(null)
@@ -59,6 +61,10 @@ export default function Login() {
         await register(account.name, account.email, DEMO_PASSWORD, demoRole)
       }
     })
+  }
+
+  function tryAdminDemo() {
+    run(() => login(DEMO_ADMIN_EMAIL, DEMO_PASSWORD))
   }
 
   return (
@@ -151,12 +157,15 @@ export default function Login() {
           {USE_MOCK && (
             <div className="mt-8 border-t border-stone-200 pt-5">
               <p className="text-sm text-stone-600">Bản demo chưa có máy chủ. Vào thử bằng tài khoản mẫu:</p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="mt-3 grid grid-cols-3 gap-2">
                 <Button variant="outline" onClick={() => tryDemo('student')} disabled={submitting}>
                   Học sinh
                 </Button>
                 <Button variant="outline" onClick={() => tryDemo('teacher')} disabled={submitting}>
                   Giáo viên
+                </Button>
+                <Button variant="outline" onClick={tryAdminDemo} disabled={submitting}>
+                  Quản trị
                 </Button>
               </div>
             </div>

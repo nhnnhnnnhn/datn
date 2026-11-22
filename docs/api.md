@@ -67,6 +67,26 @@ today; the backend may add more.
 - **OPEN:** validation errors: the mock returns 400 with a string `detail`; FastAPI's default is
   422 with a list. The client handles both.
 
+### Admin
+
+Only `role = 'admin'` may call these (403 otherwise). Admin accounts are not created through
+`/auth/register`; promote an existing user in the database. `User.role` becomes
+`'student' | 'teacher' | 'admin'`. A locked account cannot log in: `POST /auth/login` answers
+403 `Tài khoản đã bị khóa`.
+
+| Method | Path | Body / query | Response | Errors |
+|---|---|---|---|---|
+| GET | `/admin/stats` | — | `AdminStats` | 403 |
+| GET | `/admin/users` | `q?` (name or email), `role?`, `page?`, `pageSize?` (≤ 100) | `Paginated<AdminUser>` newest first | 403 |
+| PATCH | `/admin/users/{id}` | `{ active: boolean }` | `AdminUser` | 400 locking yourself, 403, 404 |
+
+- `AdminStats`: `users { total, students, teachers, admins, newLast7Days }`, `content { idioms }`,
+  `activity { gradings, quizzes, flashcardReviews }` (all-time totals), `signupsByDay[]` of
+  `{ date: 'YYYY-MM-DD', count }` for the last 14 days, oldest first, zero-filled.
+- `AdminUser`: `id, name, email, role, active, createdAt, lastActiveAt` (`null` if never active;
+  latest of grading, quiz or flashcard review).
+- **OPEN:** a locked user's existing token should stop working (401), not only block new logins.
+
 ### Idioms
 
 | Method | Path | Body / query | Response | Errors |

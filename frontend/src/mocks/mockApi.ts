@@ -9,6 +9,7 @@ import { createLogger } from '@/lib/logger'
 import { IDIOMS } from './idioms.data'
 import { gradeAnswer } from './grader'
 import { generateQuestions } from './quizGen'
+import { adminMock, DEMO_ADMIN_EMAIL, ensureDemoAdmin, isActive } from './admin'
 import { classroom } from './classroom'
 import { DAY, avg, bestScores, byId, currentUser, idiomOrThrow, loadDb, saveDb, withRole, type Db, type StoredCard, type StoredDeck } from './db'
 import { delay, pick, read, remove, shuffle, uid, write } from './store'
@@ -60,10 +61,11 @@ const rawMockApi: Api = {
     async login(email, password) {
       await delay(400)
       validateCredentials(email, password)
-      const users = read<Record<string, User>>('users', {})
       const key = email.trim().toLowerCase()
-      const user = users[key]
+      if (key === DEMO_ADMIN_EMAIL) ensureDemoAdmin()
+      const user = read<Record<string, User>>('users', {})[key]
       if (!user) throw new ApiError(401, 'Email chưa được đăng ký')
+      if (!isActive(user.id)) throw new ApiError(403, 'Tài khoản đã bị khóa')
       return startSession(withRole(user))
     },
     async register(name, email, password, role) {
@@ -137,6 +139,21 @@ const rawMockApi: Api = {
     },
     async logout() {
       remove('session')
+    },
+  },
+
+  admin: {
+    async stats() {
+      await delay(300)
+      return adminMock.stats()
+    },
+    async users(query) {
+      await delay(250)
+      return adminMock.users(query)
+    },
+    async setUserActive(id, active) {
+      await delay(250)
+      return adminMock.setUserActive(id, active)
     },
   },
 

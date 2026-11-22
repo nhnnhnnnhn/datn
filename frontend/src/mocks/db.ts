@@ -40,7 +40,7 @@ export interface Db {
 export const DAY = 86_400_000
 export const byId = new Map(IDIOMS.map((i) => [i.id, i]))
 
-const dbKey = (userId: string) => `db:v3:${userId}`
+export const dbKey = (userId: string) => `db:v3:${userId}`
 
 export function idiomOrThrow(id: number): Idiom {
   const idiom = byId.get(id)

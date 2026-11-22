@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, Flame, House, Layers, PenLine, Users } from 'lucide-react'
+import { BookOpen, Flame, House, Layers, PenLine, ShieldCheck, Users } from 'lucide-react'
 import { api } from '@/api'
 import { useAuth } from '@/context/AuthContext'
+import { ROLE_LABEL, homePath } from '@/lib/role'
 import { HeaderSearch } from './HeaderSearch'
 import { cn } from '@/lib/cn'
 
@@ -16,6 +17,11 @@ const STUDENT_NAV = [
 
 const TEACHER_NAV = [
   { to: '/teacher', label: 'Lớp học', icon: Users, end: false },
+  { to: '/idioms', label: 'Tra cứu', icon: BookOpen },
+]
+
+const ADMIN_NAV = [
+  { to: '/admin', label: 'Quản trị', icon: ShieldCheck, end: false },
   { to: '/idioms', label: 'Tra cứu', icon: BookOpen },
 ]
 
@@ -66,7 +72,7 @@ function UserMenu() {
           <div className="border-b border-stone-100 px-3 py-2">
             <div className="truncate font-medium text-stone-900">{user.name}</div>
             <div className="truncate text-xs text-stone-500">
-              {user.role === 'teacher' ? 'Giáo viên' : 'Học sinh'} · {user.email}
+              {ROLE_LABEL[user.role]} · {user.email}
             </div>
           </div>
           <Link to="/profile" className="block px-3 py-2 text-stone-700 hover:bg-stone-50">
@@ -83,13 +89,14 @@ function UserMenu() {
 
 export function AppLayout() {
   const { user } = useAuth()
-  const nav: { to: string; label: string; icon: typeof House; end?: boolean }[] = user?.role === 'teacher' ? TEACHER_NAV : STUDENT_NAV
+  const nav: { to: string; label: string; icon: typeof House; end?: boolean }[] =
+    user?.role === 'admin' ? ADMIN_NAV : user?.role === 'teacher' ? TEACHER_NAV : STUDENT_NAV
 
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-30 border-b border-stone-200 bg-white">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4">
-          <Link to={user?.role === 'teacher' ? '/teacher' : '/'} className="flex items-baseline gap-2">
+          <Link to={homePath(user?.role)} className="flex items-baseline gap-2">
             <span className="text-lg font-bold tracking-tight text-brand-700">VIVID</span>
             <span className="hidden text-sm text-stone-500 sm:inline">Thành ngữ Việt</span>
           </Link>
