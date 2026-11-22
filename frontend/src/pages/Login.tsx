@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import type { Role } from '@/types'
 import { ApiError } from '@/api/client'
 import { useAuth } from '@/context/AuthContext'
@@ -122,6 +122,11 @@ export default function Login() {
                 required
               />
               {mode === 'register' && <p className="mt-1 text-xs text-stone-500">Tối thiểu 6 ký tự.</p>}
+              {mode === 'login' && (
+                <Link to="/forgot-password" className="mt-1.5 inline-block text-sm text-stone-600 hover:underline">
+                  Quên mật khẩu?
+                </Link>
+              )}
             </div>
             {error != null && <ErrorMessage error={error} />}
             <Button type="submit" variant="dark" size="lg" className="w-full" loading={submitting}>

@@ -65,6 +65,14 @@ export const handlers = [
     const { name, email, password, role } = await body<{ name: string; email: string; password: string; role: Role }>(request)
     return mockApi.auth.register(name, email, password, role)
   }, { auth: false }),
+  route('post', '/auth/forgot-password', async ({ request }) => {
+    const { email } = await body<{ email: string }>(request)
+    return mockApi.auth.forgotPassword(email)
+  }, { auth: false }),
+  route('post', '/auth/reset-password', async ({ request }) => {
+    const { token, password } = await body<{ token: string; password: string }>(request)
+    return mockApi.auth.resetPassword(token, password)
+  }, { auth: false }),
   route('get', '/auth/me', () => mockApi.auth.me()),
 
   route('get', '/idioms', ({ query }) =>

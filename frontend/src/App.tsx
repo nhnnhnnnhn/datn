@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Spinner } from '@/components/ui/Feedback'
 import { createLogger } from '@/lib/logger'
+import ForgotPassword from '@/pages/ForgotPassword'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import Idioms from '@/pages/Idioms'
@@ -59,6 +60,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route
         element={
           <RequireAuth>

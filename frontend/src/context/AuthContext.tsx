@@ -13,6 +13,7 @@ interface AuthState {
   loading: boolean
   login(email: string, password: string): Promise<void>
   register(name: string, email: string, password: string, role: Role): Promise<void>
+  resetPassword(token: string, password: string): Promise<void>
   logout(): Promise<void>
 }
 
@@ -77,6 +78,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           log.info('registered', { userId: res.user.id, role })
         } catch (err) {
           logFailure(log, 'register failed', err)
+          throw err
+        }
+      },
+      resetPassword: async (token, password) => {
+        try {
+          const res = await api.auth.resetPassword(token, password)
+          accept(res)
+          log.info('password reset', { userId: res.user.id })
+        } catch (err) {
+          logFailure(log, 'password reset failed', err)
           throw err
         }
       },
