@@ -25,7 +25,7 @@ describe('normalize', () => {
   // Unaccented search relies on this: any accented letter left behind makes an entry unfindable
   it('reduces every VIVID phrase to plain ASCII', () => {
     const leftovers = IDIOMS.filter((i) => /[^\x20-\x7e]/.test(normalize(i.phrase))).map((i) => i.id)
-    expect(IDIOMS).toHaveLength(1636)
+    expect(IDIOMS).toHaveLength(1635)
     expect(leftovers).toEqual([])
   })
 })

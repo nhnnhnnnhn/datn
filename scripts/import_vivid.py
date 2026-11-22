@@ -42,7 +42,8 @@ THEMES = {
 }
 SOURCE_NAMES = {"cd": "Ca dao", "chưa rõ": "Chưa rõ nguồn"}
 
-CITATION_RE = re.compile(r"“([^”]+)”\s*\(\s*([^()]{1,40}?)\s*\)\s*\.?\s*$")
+CITATION_RE = re.compile(r"“([^”]+)”\s*\(\s*([^()]{1,40}?)\s*\)\s*\.?")
+STRAY_SOURCE_RE = re.compile(r"\(\s*cd\s*\)")
 GLOSS_ITEM_RE = re.compile(r"^\s*([^:;]{1,40}?)\s*:\s*(.+?)\s*$", re.S)
 
 META = {
@@ -61,6 +62,8 @@ def clean(text: str) -> str:
     text = unicodedata.normalize("NFC", text)
     text = re.sub(r"\s+", " ", text).strip()
     text = re.sub(r"\s+([.,;:!?])", r"\1", text)
+    text = re.sub(r"(?<!\.)\.\.(?!\.)", ".", text)
+    text = re.sub(r"(\s-)+\s*\d+$", "", text)
     text = re.sub(r"^[\s.,;:]+", "", text)
     return text[:1].upper() + text[1:]
 
@@ -112,12 +115,17 @@ def split_glossary(text: str) -> tuple[str, list[dict[str, str]]]:
 
 
 def split_citation(text: str) -> tuple[str, dict[str, str] | None]:
-    match = CITATION_RE.search(text)
-    if not match:
-        return text, None
-    marker = clean(match.group(2)).lower()
-    source = SOURCE_NAMES.get(marker, marker.title())
-    return text[: match.start()], {"text": clean(match.group(1)), "source": source}
+    """Strip every ``“verse” ( source )``; the schema holds one, so keep the first."""
+    citations: list[dict[str, str]] = []
+
+    def take(match: re.Match[str]) -> str:
+        marker = clean(match.group(2)).lower()
+        source = SOURCE_NAMES.get(marker, marker.title())
+        citations.append({"text": clean(match.group(1)), "source": source})
+        return " "
+
+    text = STRAY_SOURCE_RE.sub("", CITATION_RE.sub(take, text))
+    return text, citations[0] if citations else None
 
 
 def split_leading_note(text: str) -> tuple[str, str | None]:
@@ -164,7 +172,12 @@ def convert(raw: Path) -> list[dict[str, object]]:
         rows = list(csv.DictReader(f))
     if len(rows) != EXPECTED_ROWS:
         raise SystemExit(f"[IMPORT] expected {EXPECTED_ROWS} rows, found {len(rows)} in {raw}")
-    return [convert_row(i, row) for i, row in enumerate(rows, start=1)]
+    records = [convert_row(i, row) for i, row in enumerate(rows, start=1)]
+    kept = [r for r in records if re.search(r"[^\W\d_]", str(r["explanation"]))]
+    for dropped in records:
+        if dropped not in kept:
+            log(f"dropped row {dropped['id']} ({dropped['phrase']!r}): no meaning text")
+    return kept
 
 
 def write_json(path: Path, payload: object) -> None:
