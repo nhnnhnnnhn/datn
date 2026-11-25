@@ -12,9 +12,20 @@ export function Textarea({ className, ...rest }: TextareaHTMLAttributes<HTMLText
   return <textarea className={cn(base, 'py-2.5 leading-relaxed', className)} {...rest} />
 }
 
-export function Select({ className, children, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
+const CHEVRON = encodeURIComponent(
+  "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='#78716c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>",
+)
+
+// The native arrow hugs the right border, so it is replaced by a chevron with room around it
+const SELECT_ARROW = {
+  backgroundImage: `url("data:image/svg+xml,${CHEVRON}")`,
+  backgroundPosition: 'right 0.75rem center',
+  backgroundSize: '1rem',
+}
+
+export function Select({ className, children, style, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <select className={cn(base, 'h-9 pr-8', className)} {...rest}>
+    <select className={cn(base, 'h-9 appearance-none bg-no-repeat pr-10', className)} style={{ ...SELECT_ARROW, ...style }} {...rest}>
       {children}
     </select>
   )

@@ -102,10 +102,7 @@ export function StudySession({ initial, deckName, onExit }: { initial: Flashcard
         <div className="flip-scene">
           <div className={cn('flip-card relative h-80', revealed && 'is-flipped')}>
             <div className="flip-face absolute inset-0 flex flex-col items-center justify-center rounded-lg border border-stone-300 bg-white p-8 text-center">
-              <span className="text-xs text-stone-500">
-                VIVID #{idiom.id}
-                {isNewCard(card.srs) && ' · thẻ mới'}
-              </span>
+              {isNewCard(card.srs) && <span className="text-xs text-stone-500">thẻ mới</span>}
               <p className="mt-3 font-serif text-3xl leading-snug font-semibold text-stone-900">{idiom.phrase}</p>
             </div>
             <div className="flip-face flip-back absolute inset-0 overflow-y-auto rounded-lg border border-stone-300 bg-white p-6">

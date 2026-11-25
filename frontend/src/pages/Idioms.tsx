@@ -59,13 +59,13 @@ export default function Idioms() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Gõ có dấu hoặc không dấu, ví dụ: com sung chao gien, tham lam, mưa nắng…"
+            placeholder="Tìm kiếm thành ngữ, tục ngữ"
             aria-label="Tìm kiếm thành ngữ"
             className="h-12 w-full rounded-md border border-stone-300 pr-3 pl-11 text-[17px] placeholder:text-stone-400 focus:border-stone-600 focus:ring-2 focus:ring-stone-900/10 focus:outline-none"
           />
         </div>
         <Button type="submit" variant="dark" className="h-12 px-5">
-          Tra
+          Tìm kiếm
         </Button>
       </form>
 

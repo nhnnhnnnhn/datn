@@ -48,31 +48,31 @@ export const TRAITS: Record<TraitId, { label: string; short: string; aspect: str
     label: 'Nghĩa đen',
     short: 'Nghĩa đen',
     aspect: 'Ý nghĩa',
-    hint: 'Câu chỉ mang nghĩa đen, mô tả kinh nghiệm cụ thể — đừng suy diễn ra nghĩa bóng.',
+    hint: 'Câu thuần mô tả, không có tầng nghĩa ẩn dụ.',
   },
   pragmatic: {
     label: 'Sắc thái ngữ dụng',
     short: 'Sắc thái',
     aspect: 'Ý nghĩa',
-    hint: 'Câu mang sắc thái mỉa mai, châm biếm hoặc đánh giá — cần nêu rõ thái độ của người nói.',
+    hint: 'Câu mang sắc thái mỉa mai, châm biếm hoặc đánh giá, lệch khỏi cách hiểu trung tính.',
   },
   sino_vietnamese: {
     label: 'Từ Hán Việt',
     short: 'Hán Việt',
     aspect: 'Từ vựng',
-    hint: 'Câu có từ Hán Việt — hãy hiểu nghĩa từng yếu tố trước khi giải nghĩa cả câu.',
+    hint: 'Câu có từ Hán Việt hiếm hoặc mang tính văn chương, ít gặp trong tiếng Việt hiện nay.',
   },
   uncommon_vocab: {
     label: 'Từ ít phổ biến',
     short: 'Từ cổ',
     aspect: 'Từ vựng',
-    hint: 'Câu có từ cổ hoặc ít dùng trong tiếng Việt hiện đại.',
+    hint: 'Câu có từ cổ hoặc không còn phổ biến trong tiếng Việt hiện đại.',
   },
   folk_knowledge: {
     label: 'Kinh nghiệm dân gian',
     short: 'Dân gian',
     aspect: 'Tri thức nông nghiệp & phong tục',
-    hint: 'Câu phản ánh kinh nghiệm nông nghiệp, thời tiết hoặc phong tục truyền thống.',
+    hint: 'Câu phản ánh tập quán nông nghiệp, chu kỳ mùa vụ hoặc tri thức phong tục của đời sống truyền thống.',
   },
 }
 

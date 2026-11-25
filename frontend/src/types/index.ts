@@ -58,8 +58,6 @@ export interface AuthResponse {
 
 export interface ForgotPasswordResponse {
   message: string
-  // Only while the server has no mail sender and exposes the code itself
-  resetToken?: string
 }
 
 // The four aspect-based judge criteria from the VIVID paper, each scored 0–5

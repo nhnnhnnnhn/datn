@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
+import { Link, Navigate, useNavigate } from 'react-router'
 import { api } from '@/api'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/Button'
@@ -11,10 +11,9 @@ const MIN_PASSWORD_LENGTH = 6
 export default function ForgotPassword() {
   const { user, resetPassword } = useAuth()
   const navigate = useNavigate()
-  const [params] = useSearchParams()
-  const [step, setStep] = useState<'request' | 'reset'>(params.get('token') ? 'reset' : 'request')
+  const [step, setStep] = useState<'request' | 'reset'>('request')
   const [email, setEmail] = useState('')
-  const [token, setToken] = useState(params.get('token') ?? '')
+  const [code, setCode] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
@@ -39,12 +38,7 @@ export default function ForgotPassword() {
     e.preventDefault()
     run(async () => {
       const res = await api.auth.forgotPassword(email)
-      if (res.resetToken) {
-        setToken(res.resetToken)
-        setNotice('Máy chủ chưa gửi được email nên mã đặt lại đã được điền sẵn bên dưới.')
-      } else {
-        setNotice(res.message)
-      }
+      setNotice(res.message)
       setStep('reset')
     })
   }
@@ -60,7 +54,7 @@ export default function ForgotPassword() {
       return
     }
     run(async () => {
-      await resetPassword(token.trim(), password)
+      await resetPassword(code.trim(), password)
       navigate('/', { replace: true })
     })
   }
@@ -85,8 +79,8 @@ export default function ForgotPassword() {
           </h1>
           <p className="mt-1 text-[15px] text-stone-500">
             {step === 'request'
-              ? 'Nhập email đã đăng ký, bạn sẽ nhận mã để đặt mật khẩu mới.'
-              : 'Nhập mã đặt lại và mật khẩu mới. Bạn sẽ được đăng nhập ngay sau khi đổi.'}
+              ? 'Nhập email đã đăng ký, bạn sẽ nhận mã 6 chữ số qua email để đặt mật khẩu mới.'
+              : 'Nhập mã trong email và mật khẩu mới. Bạn sẽ được đăng nhập ngay sau khi đổi.'}
           </p>
 
           {step === 'request' ? (
@@ -107,8 +101,16 @@ export default function ForgotPassword() {
             <form onSubmit={onReset} className="mt-6 space-y-4 rounded-lg border border-stone-200 bg-white p-5">
               {notice && <p className="rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-700">{notice}</p>}
               <div>
-                <Label htmlFor="token">Mã đặt lại</Label>
-                <Input id="token" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="one-time-code" required />
+                <Label htmlFor="code">Mã 6 chữ số</Label>
+                <Input
+                  id="code"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="123456"
+                  required
+                />
               </div>
               <div>
                 <Label htmlFor="password">Mật khẩu mới</Label>

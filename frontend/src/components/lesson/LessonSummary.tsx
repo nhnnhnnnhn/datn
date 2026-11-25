@@ -47,7 +47,7 @@ export function LessonSummary({ quiz, answers, result, onExit }: { quiz: Quiz; a
                     <span className="font-medium text-correct-ink">{q.answer.map((i) => q.options[i]).join(', ')}</span>
                   </p>
                   <Link to={`/practice?idiom=${q.idiomId}`} className="mt-1 inline-block text-xs font-medium text-brand-700 hover:underline">
-                    Luyện viết câu này
+                    Luyện viết
                   </Link>
                 </li>
               ))}

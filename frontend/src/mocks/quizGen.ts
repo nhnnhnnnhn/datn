@@ -22,7 +22,7 @@ function withOptions(correct: string, distractors: string[]): { options: string[
 
 function buildQuestion(idiom: Idiom, type: QuestionType, all: Idiom[]): QuizQuestion | null {
   const others = shuffle(all.filter((i) => i.id !== idiom.id))
-  const explanation = `“${idiom.phrase}”: ${idiom.explanation}`
+  const explanation = `“${idiom.phrase}” có nghĩa là: ${idiom.explanation}`
   const base = { id: uid(), idiomId: idiom.id, explanation }
 
   switch (type) {
@@ -77,7 +77,9 @@ function buildQuestion(idiom: Idiom, type: QuestionType, all: Idiom[]): QuizQues
         highlight: idiom.phrase,
         options: [...TRAIT_IDS.map((t) => TRAITS[t].label), 'Không mang đặc trưng nào'],
         answer: idiom.traits.length ? TRAIT_IDS.flatMap((t, i) => (idiom.traits.includes(t) ? [i] : [])) : [TRAIT_IDS.length],
-        explanation: `“${idiom.phrase}” được gán nhãn trong VIVID: ${idiom.traits.map((t) => TRAITS[t].label.toLowerCase()).join(', ') || 'không có đặc trưng nào'}.`,
+        explanation: idiom.traits.length
+          ? `“${idiom.phrase}” có đặc trưng là ${idiom.traits.map((t) => TRAITS[t].label.toLowerCase()).join(', ')}.`
+          : `“${idiom.phrase}” không mang đặc trưng ngôn ngữ nào.`,
       }
     case 'topic': {
       const correct = TOPICS[idiom.topic].label

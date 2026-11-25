@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
-import { Layers, ListChecks, PenLine } from 'lucide-react'
+import { ListChecks, PenLine } from 'lucide-react'
 import { api } from '@/api'
 import { useAuth } from '@/context/AuthContext'
 import { Section } from '@/components/ui/Card'
@@ -15,20 +15,12 @@ import { TOPICS, TRAITS } from '@/lib/constants'
 export default function Dashboard() {
   const { user } = useAuth()
   const summary = useQuery({ queryKey: ['progress'], queryFn: api.progress.summary, meta: { tag: 'PROGRESS' } })
-  const decks = useQuery({ queryKey: ['decks'], queryFn: api.flashcards.decks, meta: { tag: 'FLASHCARD' } })
   const history = useQuery({ queryKey: ['grading', 'history', 5], queryFn: () => api.grading.history(5), meta: { tag: 'GRADING' } })
 
   const s = summary.data
-  const dueDeck = decks.data?.filter((d) => d.dueCount > 0).sort((a, b) => b.dueCount - a.dueCount)[0]
   const weakest = s?.byTrait.filter((t) => t.avgScore != null).sort((a, b) => a.avgScore! - b.avgScore!)[0]
 
   const today = [
-    {
-      to: dueDeck ? `/sets/${dueDeck.id}/flashcards` : '/sets',
-      icon: Layers,
-      title: 'Ôn thẻ đến hạn',
-      detail: s ? (s.cardsDue ? `${s.cardsDue} thẻ, khoảng ${Math.max(1, Math.round(s.cardsDue / 3))} phút` : 'Không còn thẻ đến hạn') : '…',
-    },
     { to: '/practice', icon: PenLine, title: 'Luyện viết một câu', detail: 'Tự giải nghĩa, nhận góp ý theo 4 tiêu chí' },
     { to: '/quiz', icon: ListChecks, title: 'Trắc nghiệm nhanh', detail: '10 câu sinh tự động từ kho' },
   ]
@@ -44,7 +36,6 @@ export default function Dashboard() {
     <div className="space-y-10">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Chào {user?.name}</h1>
-        <p className="mt-1 text-[15px] text-stone-500">{new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
@@ -53,7 +44,7 @@ export default function Dashboard() {
       </div>
 
       <Section title="Hôm nay">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           {today.map(({ to, icon: Icon, title, detail }) => (
             <Link
               key={title}

@@ -67,7 +67,6 @@ export interface Api {
     list(): Promise<Classroom[]>
     get(id: string): Promise<Classroom>
     create(name: string): Promise<Classroom>
-    join(code: string): Promise<Classroom>
     students(id: string): Promise<ClassStudent[]>
     report(id: string): Promise<ClassReport>
   }
@@ -76,8 +75,6 @@ export interface Api {
     get(id: string): Promise<Assignment>
     create(input: AssignmentInput): Promise<Assignment>
     submissions(id: string): Promise<Submission[]>
-    mySubmission(id: string): Promise<Submission | null>
-    submit(id: string, answers: { idiomId: number; answer: string }[]): Promise<Submission>
     review(submissionId: string, review: SubmissionReview): Promise<Submission>
   }
 }
