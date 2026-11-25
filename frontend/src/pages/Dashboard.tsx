@@ -79,13 +79,12 @@ export default function Dashboard() {
           </Section>
 
           <Section title="Mức độ thành thạo theo đặc trưng" action={<MasteryLegend />}>
-            <p className="mb-4 text-sm text-stone-500">5 đặc trưng ngôn ngữ theo phân loại của VIVID. Mỗi thanh là toàn bộ câu mang đặc trưng đó, chia theo điểm cao nhất bạn đạt được.</p>
             <ul className="space-y-4">
               {s.byTrait.map((t) => (
                 <li key={t.trait} className="grid items-center gap-x-4 gap-y-1 sm:grid-cols-[11rem_minmax(0,1fr)_5rem]">
                   <span className="text-sm font-medium text-stone-800">{TRAITS[t.trait].label}</span>
                   <MasteryBar levels={t.levels} total={t.total} />
-                  <span className="text-sm text-stone-500 tabular-nums sm:text-right">{t.avgScore != null ? `TB ${t.avgScore.toFixed(1)}` : 'chưa học'}</span>
+                  <span className="text-sm text-stone-500 tabular-nums sm:text-right">{t.avgScore != null ? `TB ${t.avgScore.toFixed(1)}` : `0/${t.total}`}</span>
                 </li>
               ))}
             </ul>

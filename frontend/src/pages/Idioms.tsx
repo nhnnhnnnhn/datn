@@ -1,18 +1,19 @@
 import { useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router'
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Search } from 'lucide-react'
 import type { TopicId, TraitId } from '@/types'
 import { api } from '@/api'
 import { Section } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Field'
+import { Pagination } from '@/components/ui/Pagination'
 import { EmptyState, ErrorMessage, Spinner } from '@/components/ui/Feedback'
 import { IdiomResult } from '@/components/idiom/IdiomResult'
 import { DailyIdiomBox } from '@/components/idiom/DailyIdiomBox'
 import { TOPICS, TOPIC_IDS, TRAITS, TRAIT_IDS } from '@/lib/constants'
 
-const PAGE_SIZE = 20
+const PAGE_SIZES = [10, 20, 50, 100]
 
 export default function Idioms() {
   const [params, setParams] = useSearchParams()
@@ -28,6 +29,7 @@ export default function Idioms() {
 
   function update(next: Record<string, string | undefined>) {
     const p = new URLSearchParams(params)
+    if (!('page' in next)) p.delete('page')
     for (const [k, v] of Object.entries(next)) {
       if (v) p.set(k, v)
       else p.delete(k)
@@ -40,16 +42,24 @@ export default function Idioms() {
     update({ q: search.trim() || undefined })
   }
 
-  const query = useInfiniteQuery({
-    queryKey: ['idioms', 'search', { q, topic, trait }],
-    queryFn: ({ pageParam }) => api.idioms.list({ q, topic, trait, page: pageParam, pageSize: PAGE_SIZE }),
-    initialPageParam: 1,
-    getNextPageParam: (last) => (last.page * last.pageSize < last.total ? last.page + 1 : undefined),
+  const pageSize = PAGE_SIZES.includes(Number(params.get('size'))) ? Number(params.get('size')) : PAGE_SIZES[1]
+  const page = Math.max(1, Number(params.get('page')) || 1)
+
+  const query = useQuery({
+    queryKey: ['idioms', 'search', { q, topic, trait, page, pageSize }],
+    queryFn: () => api.idioms.list({ q, topic, trait, page, pageSize }),
+    placeholderData: keepPreviousData,
     meta: { tag: 'IDIOM' },
   })
 
-  const items = query.data?.pages.flatMap((p) => p.items) ?? []
-  const total = query.data?.pages[0]?.total ?? 0
+  const items = query.data?.items ?? []
+  const total = query.data?.total ?? 0
+  const pages = Math.max(1, Math.ceil(total / pageSize))
+
+  function goToPage(next: number) {
+    update({ page: next > 1 ? String(next) : undefined })
+    window.scrollTo({ top: 0 })
+  }
 
   return (
     <div>
@@ -114,13 +124,23 @@ export default function Idioms() {
                   <IdiomResult key={idiom.id} idiom={idiom} />
                 ))}
               </div>
-              {query.hasNextPage && (
-                <div className="mt-4">
-                  <Button variant="outline" onClick={() => query.fetchNextPage()} loading={query.isFetchingNextPage}>
-                    Xem thêm câu
-                  </Button>
-                </div>
-              )}
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+                <Pagination page={page} pages={pages} onChange={goToPage} />
+                <label className="flex items-center gap-2 text-sm text-stone-600">
+                  Số câu mỗi trang
+                  <Select
+                    value={pageSize}
+                    onChange={(e) => update({ size: e.target.value === String(PAGE_SIZES[1]) ? undefined : e.target.value, page: undefined })}
+                    className="h-8 w-auto"
+                  >
+                    {PAGE_SIZES.map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+              </div>
             </>
           )}
         </Section>
