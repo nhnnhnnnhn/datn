@@ -59,13 +59,21 @@ def send_password_reset_email(*, to: str, reset_token: str, name: str = "") -> b
         f"Mã có hiệu lực trong {minutes} phút. "
         "Nếu bạn không yêu cầu, hãy bỏ qua email này.\n"
     )
-    html = f"""\
-<html><body>
-<p>{greeting}</p>
-<p>Bạn (hoặc ai đó) đã yêu cầu đặt lại mật khẩu tài khoản <strong>VIVID</strong>.</p>
-<p>Mã đặt lại của bạn:</p>
-<p style="font-family:monospace;font-size:28px;letter-spacing:0.2em;font-weight:700;background:#f5f5f4;padding:16px;border-radius:8px;display:inline-block">{reset_token}</p>
-<p>Mã có hiệu lực trong <strong>{minutes} phút</strong>. Nếu bạn không yêu cầu, hãy bỏ qua email này.</p>
-</body></html>
-"""
+    code_style = (
+        "font-family:monospace;font-size:28px;letter-spacing:0.2em;"
+        "font-weight:700;background:#f5f5f4;padding:16px;"
+        "border-radius:8px;display:inline-block"
+    )
+    html = (
+        "<html><body>"
+        f"<p>{greeting}</p>"
+        "<p>Bạn (hoặc ai đó) đã yêu cầu đặt lại mật khẩu tài khoản "
+        "<strong>VIVID</strong>.</p>"
+        "<p>Mã đặt lại của bạn:</p>"
+        f'<p style="{code_style}">{reset_token}</p>'
+        "<p>Mã có hiệu lực trong "
+        f"<strong>{minutes} phút</strong>. "
+        "Nếu bạn không yêu cầu, hãy bỏ qua email này.</p>"
+        "</body></html>"
+    )
     return send_email(to=to, subject=subject, text=text, html=html)
