@@ -44,7 +44,11 @@ function validateCredentials(email: string, password: string) {
   if (password.length < 6) throw new ApiError(400, 'Mật khẩu cần tối thiểu 6 ký tự')
 }
 
-const RESET_TOKEN_PREFIX = 'mock-reset-'
+const RESET_CODE_MINUTES = 30
+
+interface ResetCodes {
+  [code: string]: { email: string; expiresAt: number }
+}
 
 function startSession(user: User) {
   write('session', user)
@@ -79,16 +83,24 @@ const rawMockApi: Api = {
       await delay(400)
       const key = email.trim().toLowerCase()
       if (!key.includes('@')) throw new ApiError(400, 'Email không hợp lệ')
-      const message = 'Nếu email tồn tại, hãy dùng mã đặt lại mật khẩu trong thời hạn cho phép.'
-      const exists = key in read<Record<string, User>>('users', {})
-      return exists ? { message, resetToken: `${RESET_TOKEN_PREFIX}${encodeURIComponent(key)}` } : { message }
+      const message = 'Nếu email tồn tại, mã đặt lại mật khẩu đã được gửi. Hãy kiểm tra hộp thư.'
+      if (!(key in read<Record<string, User>>('users', {}))) return { message }
+      // Demo only: nothing is emailed, so the code is shown in the message
+      const code = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0')
+      const codes = read<ResetCodes>('reset-codes', {})
+      write('reset-codes', { ...codes, [code]: { email: key, expiresAt: Date.now() + RESET_CODE_MINUTES * 60_000 } })
+      return { message: `${message} (Chế độ demo, mã của bạn là ${code}.)` }
     },
     async resetPassword(token, password) {
       await delay(500)
       if (password.length < 6) throw new ApiError(400, 'Mật khẩu cần tối thiểu 6 ký tự')
-      const key = token.startsWith(RESET_TOKEN_PREFIX) ? decodeURIComponent(token.slice(RESET_TOKEN_PREFIX.length)) : ''
-      const user = read<Record<string, User>>('users', {})[key]
+      const code = token.replace(/\D/g, '')
+      const codes = read<ResetCodes>('reset-codes', {})
+      const entry = codes[code]
+      const user = entry && entry.expiresAt > Date.now() ? read<Record<string, User>>('users', {})[entry.email] : undefined
       if (!user) throw new ApiError(400, 'Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn')
+      delete codes[code]
+      write('reset-codes', codes)
       return startSession(withRole(user))
     },
     async me() {
