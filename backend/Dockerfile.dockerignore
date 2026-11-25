@@ -1,0 +1,8 @@
+*
+!backend/
+!ai/
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.env
+backend/tests/
