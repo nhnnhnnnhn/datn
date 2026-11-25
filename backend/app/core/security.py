@@ -1,3 +1,6 @@
+import hashlib
+import hmac
+import secrets
 from datetime import UTC, datetime, timedelta
 
 from jose import JWTError, jwt
@@ -7,6 +10,7 @@ from app.core.config import get_settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 ALGORITHM = "HS256"
+RESET_CODE_DIGITS = 6
 
 
 def hash_password(password: str) -> str:
@@ -39,40 +43,22 @@ def decode_access_token(token: str) -> str | None:
     return str(sub) if sub is not None else None
 
 
-def _password_fingerprint(password_hash: str) -> str:
-    return password_hash[-16:]
+def generate_password_reset_code() -> str:
+    """Return a zero-padded numeric code (e.g. 048291)."""
+    n = secrets.randbelow(10**RESET_CODE_DIGITS)
+    return f"{n:0{RESET_CODE_DIGITS}d}"
 
 
-def create_password_reset_token(subject: str, password_hash: str) -> str:
+def hash_password_reset_code(code: str) -> str:
     settings = get_settings()
-    expire = datetime.now(UTC) + timedelta(minutes=settings.password_reset_expire_minutes)
-    return jwt.encode(
-        {
-            "sub": subject,
-            "typ": "pwd_reset",
-            "pwd": _password_fingerprint(password_hash),
-            "exp": expire,
-        },
-        settings.secret_key,
-        algorithm=ALGORITHM,
-    )
+    normalized = "".join(ch for ch in code.strip() if ch.isdigit())
+    return hmac.new(
+        settings.secret_key.encode("utf-8"),
+        normalized.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
 
 
-def decode_password_reset_claims(token: str) -> tuple[str, str] | None:
-    """Return (user_id, password_fingerprint) for a password-reset JWT, else None."""
+def password_reset_expiry() -> datetime:
     settings = get_settings()
-    try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
-    except JWTError:
-        return None
-    if payload.get("typ") != "pwd_reset":
-        return None
-    sub = payload.get("sub")
-    pwd = payload.get("pwd")
-    if sub is None or not isinstance(pwd, str):
-        return None
-    return str(sub), pwd
-
-
-def password_fingerprint(password_hash: str) -> str:
-    return _password_fingerprint(password_hash)
+    return datetime.now(UTC) + timedelta(minutes=settings.password_reset_expire_minutes)

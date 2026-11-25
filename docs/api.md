@@ -52,15 +52,14 @@ today; the backend may add more.
 |---|---|---|---|---|
 | POST | `/auth/login` | `{ email, password }` | `AuthResponse` `{ token, user: User }` | 400 invalid input, 401 wrong credentials |
 | POST | `/auth/register` | `{ name, email, password, role: 'student' \| 'teacher' }` | `AuthResponse` | 400 invalid input, 409 email taken |
-| POST | `/auth/forgot-password` | `{ email }` | `{ message, resetToken? }` | 400 invalid email |
+| POST | `/auth/forgot-password` | `{ email }` | `{ message }` | 400 invalid email |
 | POST | `/auth/reset-password` | `{ token, password }` | `AuthResponse` (signs the user in) | 400 invalid or expired token, short password |
 | GET | `/auth/me` | — | `User` | 401 |
 
 - **OPEN:** token format and lifetime (JWT? expiry? refresh token?). The mock token is
   `mock-<userId>`; the client treats it as opaque.
-- **OPEN:** how the reset code reaches the user. The backend returns `resetToken` in the response only
-  while `EXPOSE_RESET_TOKEN=true` (no mail sender yet); otherwise the page asks the user to type the
-  code, or opens it from `/forgot-password?token=...`.
+- Password reset: `/auth/forgot-password` issues a **6-digit** code and emails it when SMTP is set
+  (response is only `{ message }`). `/auth/reset-password` accepts that code as `token`.
 - **OPEN:** logout. The client only drops the token; no endpoint is called.
 - **OPEN:** should a teacher be able to self-register, or is the role assigned by an admin?
 - **OPEN:** validation errors: the mock returns 400 with a string `detail`; FastAPI's default is

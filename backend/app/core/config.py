@@ -20,8 +20,13 @@ class Settings(BaseSettings):
     secret_key: str = "default-secret-key"
     access_token_expire_minutes: int = 60
     password_reset_expire_minutes: int = 30
-    # No SMTP yet: when true, forgot-password includes resetToken in the JSON response.
-    expose_reset_token: bool = True
+    # SMTP for password-reset emails (leave smtp_host empty to skip sending).
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_use_tls: bool = True
     # Empty = heuristic grading / rule-based quizzes (no LLM call)
     llm_api_key: str = ""
     # Set in .env (e.g. google/gemini-3.1-flash-lite on OpenRouter)

@@ -1,19 +1,23 @@
+from datetime import UTC, datetime
+
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.core.security import (
     create_access_token,
-    create_password_reset_token,
-    decode_password_reset_claims,
+    generate_password_reset_code,
     hash_password,
-    password_fingerprint,
+    hash_password_reset_code,
+    password_reset_expiry,
     verify_password,
 )
+from app.lib.email import send_password_reset_email
 from app.lib.serializers import user_out
 from app.models import User
 
 _FORGOT_MESSAGE = "Nếu email tồn tại, hãy dùng mã đặt lại mật khẩu trong thời hạn cho phép."
+_FORGOT_SENT_MESSAGE = "Nếu email tồn tại, mã đặt lại mật khẩu đã được gửi. Hãy kiểm tra hộp thư."
+_RESET_INVALID = "Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn"
 
 
 def _normalize_email(email: str) -> str:
@@ -65,31 +69,46 @@ def login(db: Session, email: str, password: str) -> dict:
 
 def forgot_password(db: Session, email: str) -> dict:
     email = _normalize_email(email)
-    settings = get_settings()
     out: dict = {"message": _FORGOT_MESSAGE}
     user = db.query(User).filter(User.email == email).first()
-    if user and settings.expose_reset_token:
-        out["resetToken"] = create_password_reset_token(str(user.id), user.password_hash)
+    if not user:
+        return out
+
+    code = generate_password_reset_code()
+    user.password_reset_code_hash = hash_password_reset_code(code)
+    user.password_reset_expires_at = password_reset_expiry()
+    db.commit()
+
+    emailed = send_password_reset_email(
+        to=user.email,
+        reset_token=code,
+        name=user.full_name or "",
+    )
+    if emailed:
+        out["message"] = _FORGOT_SENT_MESSAGE
     return out
 
 
 def reset_password(db: Session, token: str, password: str) -> dict:
     _validate_password(password)
-    claims = decode_password_reset_claims(token)
-    if not claims:
-        raise HTTPException(
-            status_code=400,
-            detail="Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn",
+    code_hash = hash_password_reset_code(token)
+    user = (
+        db.query(User)
+        .filter(
+            User.password_reset_code_hash == code_hash,
+            User.password_reset_expires_at.isnot(None),
         )
-    user_id, pwd_fp = claims
-    user = db.get(User, int(user_id))
-    if not user or password_fingerprint(user.password_hash) != pwd_fp:
-        raise HTTPException(
-            status_code=400,
-            detail="Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn",
-        )
+        .first()
+    )
+    expires = user.password_reset_expires_at if user else None
+    if expires is not None and expires.tzinfo is None:
+        expires = expires.replace(tzinfo=UTC)
+    if not user or expires is None or expires <= datetime.now(UTC):
+        raise HTTPException(status_code=400, detail=_RESET_INVALID)
 
     user.password_hash = hash_password(password)
+    user.password_reset_code_hash = None
+    user.password_reset_expires_at = None
     db.commit()
     db.refresh(user)
     return {"token": create_access_token(str(user.id)), "user": user_out(user)}
