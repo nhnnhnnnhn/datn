@@ -44,7 +44,7 @@ export default function Practice() {
     <div>
       <PageHeader
         title="Luyện viết"
-        description="Tự giải nghĩa, nhận góp ý theo từng tiêu chí, sửa và nộp lại."
+        description="Giải nghĩa, nhận xét và thử lại"
         action={
           <div className="flex flex-wrap items-center gap-2">
             <Select value={topic} onChange={(e) => setTopic(e.target.value as TopicId | '')} className="h-8 w-auto" aria-label="Chủ đề">

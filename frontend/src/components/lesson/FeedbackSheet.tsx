@@ -6,19 +6,17 @@ type SheetState = { kind: 'idle'; canCheck: boolean } | { kind: 'correct'; expla
 export function FeedbackSheet({ state, onCheck, onContinue, continueLabel }: { state: SheetState; onCheck: () => void; onContinue: () => void; continueLabel: string }) {
   if (state.kind === 'idle') {
     return (
-      <div className="border-t-2 border-stone-200 bg-white">
-        <div className="mx-auto flex max-w-3xl justify-end px-4 py-5">
-          <Button variant="dark" size="lg" className="w-full sm:w-40" disabled={!state.canCheck} onClick={onCheck}>
-            Kiểm tra
-          </Button>
-        </div>
+      <div className="mt-6 flex justify-end">
+        <Button variant="dark" size="lg" className="w-full sm:w-40" disabled={!state.canCheck} onClick={onCheck}>
+          Kiểm tra
+        </Button>
       </div>
     )
   }
   const correct = state.kind === 'correct'
   return (
-    <div role="status" className={cn('animate-sheet-up', correct ? 'bg-correct-bg text-correct-ink' : 'bg-wrong-bg text-wrong-ink')}>
-      <div className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-5 sm:flex-row sm:items-end sm:justify-between">
+    <div role="status" className={cn('mt-6 animate-sheet-up rounded-lg', correct ? 'bg-correct-bg text-correct-ink' : 'bg-wrong-bg text-wrong-ink')}>
+      <div className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <p className="text-lg font-bold">{correct ? 'Chính xác!' : 'Chưa đúng'}</p>
           {!correct && (

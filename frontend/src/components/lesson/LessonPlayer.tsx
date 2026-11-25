@@ -157,11 +157,9 @@ export function LessonPlayer({ quiz, typing = false, onExit }: { quiz: Quiz; typ
             })}
           </ul>
         )}
-      </main>
 
-      <div className="sticky bottom-0">
         <FeedbackSheet state={sheet} onCheck={check} onContinue={advance} continueLabel={isLast ? 'Xem kết quả' : 'Tiếp tục'} />
-      </div>
+      </main>
     </div>
   )
 }

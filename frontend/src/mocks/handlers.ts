@@ -127,7 +127,6 @@ export const handlers = [
 
   route('get', '/classes', () => mockApi.classes.list()),
   route('post', '/classes', async ({ request }) => mockApi.classes.create((await body<{ name: string }>(request)).name)),
-  route('post', '/classes/join', async ({ request }) => mockApi.classes.join((await body<{ code: string }>(request)).code)),
   route('get', '/classes/:id', ({ params }) => mockApi.classes.get(params.id)),
   route('get', '/classes/:id/students', ({ params }) => mockApi.classes.students(params.id)),
   route('get', '/classes/:id/report', ({ params }) => mockApi.classes.report(params.id)),
@@ -136,11 +135,6 @@ export const handlers = [
   route('post', '/assignments', async ({ request }) => mockApi.assignments.create(await body<AssignmentInput>(request))),
   route('get', '/assignments/:id', ({ params }) => mockApi.assignments.get(params.id)),
   route('get', '/assignments/:id/submissions', ({ params }) => mockApi.assignments.submissions(params.id)),
-  route('get', '/assignments/:id/submissions/me', ({ params }) => mockApi.assignments.mySubmission(params.id)),
-  route('post', '/assignments/:id/submissions', async ({ params, request }) => {
-    const { answers } = await body<{ answers: { idiomId: number; answer: string }[] }>(request)
-    return mockApi.assignments.submit(params.id, answers)
-  }),
   route('post', '/submissions/:id/review', async ({ params, request }) =>
     mockApi.assignments.review(params.id, await body<SubmissionReview>(request)),
   ),

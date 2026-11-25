@@ -1,11 +1,9 @@
 import { Link, useNavigate, useParams } from 'react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Layers, ListChecks, PencilLine, Puzzle } from 'lucide-react'
-import type { Flashcard } from '@/types'
 import { api } from '@/api'
 import { Button } from '@/components/ui/Button'
 import { ErrorMessage, Spinner } from '@/components/ui/Feedback'
-import { isDue, isLearned, isNewCard } from '@/lib/srs'
 import { createLogger } from '@/lib/logger'
 import { firstSentence } from '@/lib/text'
 
@@ -17,13 +15,6 @@ const MODES = [
   { path: 'match', label: 'Nối cặp', text: 'Ghép câu với nghĩa, tính giờ', icon: Puzzle },
   { path: 'write', label: 'Điền từ', text: 'Tự gõ từ còn thiếu trong câu', icon: PencilLine },
 ]
-
-function cardStatus(card: Flashcard): string {
-  if (isNewCard(card.srs)) return 'Mới'
-  if (isDue(card.srs)) return 'Cần ôn'
-  const next = new Date(card.srs.due).toLocaleDateString('vi-VN', { day: 'numeric', month: 'numeric' })
-  return `${isLearned(card.srs) ? 'Đã thuộc' : 'Đang học'} · ôn lại ${next}`
-}
 
 export default function SetDetail() {
   const { deckId = '' } = useParams()
@@ -100,12 +91,11 @@ export default function SetDetail() {
         ) : (
           <ul className="divide-y divide-stone-100">
             {cards.data.map((c) => (
-              <li key={c.id} className="grid gap-x-6 gap-y-1 py-3 sm:grid-cols-[minmax(0,14rem)_1fr_10rem]">
+              <li key={c.id} className="grid gap-x-6 gap-y-1 py-3 sm:grid-cols-[minmax(0,14rem)_1fr]">
                 <Link to={`/idioms/${c.idiomId}`} className="font-serif text-[17px] font-semibold text-stone-900 hover:text-brand-700">
                   {c.idiom.phrase}
                 </Link>
                 <p className="text-sm text-stone-700">{firstSentence(c.idiom.explanation)}</p>
-                <p className="text-xs text-stone-500 sm:text-right">{cardStatus(c)}</p>
               </li>
             ))}
           </ul>

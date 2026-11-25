@@ -129,7 +129,6 @@ today; the backend may add more.
 |---|---|---|---|---|
 | GET | `/classes` | — | `Classroom[]` (teacher: own classes plus the seeded demo class, student: joined) | — |
 | POST | `/classes` | `{ name }` | `Classroom` | 400, 403 not a teacher |
-| POST | `/classes/join` | `{ code }` | `Classroom` | 404 wrong code |
 | GET | `/classes/{id}` | — | `Classroom` | 404 |
 | GET | `/classes/{id}/students` | — | `ClassStudent[]` | 404 |
 | GET | `/classes/{id}/report` | — | `ClassReport` | 404 |
@@ -144,8 +143,6 @@ today; the backend may add more.
 | POST | `/assignments` | `AssignmentInput` `{ classId, title, instructions, idiomIds, dueAt }` | `Assignment` | 400, 403 |
 | GET | `/assignments/{id}` | — | `Assignment` | 404 |
 | GET | `/assignments/{id}/submissions` | — | `Submission[]` | 403 not a teacher |
-| GET | `/assignments/{id}/submissions/me` | — | `Submission` or `null` | 404 |
-| POST | `/assignments/{id}/submissions` | `{ answers: { idiomId, answer }[] }` | `Submission` (graded) | 400 missing answers, 404 |
 | POST | `/submissions/{id}/review` | `SubmissionReview` `{ score: 0–5, comment }` | `Submission` | 400, 403, 404 |
 
 - **OPEN:** "not submitted yet" for `/submissions/me`: the mock returns `200` with `null`; a

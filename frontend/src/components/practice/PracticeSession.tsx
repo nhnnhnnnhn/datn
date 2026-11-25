@@ -6,7 +6,6 @@ import { api } from '@/api'
 import { Button } from '@/components/ui/Button'
 import { Textarea } from '@/components/ui/Field'
 import { ErrorMessage } from '@/components/ui/Feedback'
-import { VividRef } from '@/components/idiom/VividRef'
 import { createLogger } from '@/lib/logger'
 import { syllables } from '@/lib/text'
 import { FeedbackPanel } from './FeedbackPanel'
@@ -58,9 +57,7 @@ export function PracticeSession({ idiom, onNext, nextLoading }: { idiom: Idiom; 
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="min-w-0">
-        <p className="text-sm text-stone-500">Giải nghĩa câu sau bằng lời của em:</p>
-        <h2 className="mt-1 font-serif text-3xl leading-snug font-bold text-stone-900">{idiom.phrase}</h2>
-        <VividRef id={idiom.id} />
+        <h2 className="font-serif text-3xl leading-snug font-bold text-stone-900">{idiom.phrase}</h2>
 
         <div className="mt-5">
           <Textarea
@@ -109,7 +106,7 @@ export function PracticeSession({ idiom, onNext, nextLoading }: { idiom: Idiom; 
               {showReference ? (
                 <div>
                   <h3 className="text-sm font-semibold text-stone-900">
-                    Giải nghĩa chuẩn <span className="font-normal text-stone-500">· VIVID #{idiom.id}</span>
+                    Giải nghĩa chuẩn
                   </h3>
                   <p className="mt-1.5 text-[15px] leading-relaxed text-stone-700">{idiom.explanation}</p>
                   <div className="mt-3 flex gap-4 text-sm">

@@ -17,13 +17,11 @@ export function DailyIdiomFeature() {
           <Link to={`/idioms/${data.id}`} className="mt-3 block font-serif text-3xl leading-tight font-bold text-stone-900 hover:text-brand-700 sm:text-4xl">
             {data.phrase}
           </Link>
-          <p className="mt-2 text-sm text-stone-500">
-            VIVID #{data.id} · {TOPICS[data.topic].label}
-          </p>
+          <p className="mt-2 text-sm text-stone-500">{TOPICS[data.topic].label}</p>
           <p className="mt-4 max-w-2xl text-[17px] leading-relaxed text-stone-800">{data.explanation}</p>
           <div className="mt-6 flex flex-wrap gap-2">
             <Link to={`/practice?idiom=${data.id}`} className={buttonClass('primary')}>
-              Thử tự giải nghĩa
+              Luyện viết
             </Link>
             <Link to={`/idioms/${data.id}`} className={buttonClass('outline')}>
               Xem chi tiết

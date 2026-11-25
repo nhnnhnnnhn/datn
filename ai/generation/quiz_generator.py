@@ -80,7 +80,7 @@ def build_question(
 ) -> dict[str, Any] | None:
     rng = rng or random.Random()
     others = _shuffle([i for i in all_idioms if i["id"] != idiom["id"]], rng)
-    explanation = f"“{idiom['phrase']}”: {idiom['explanation']}"
+    explanation = f"“{idiom['phrase']}” có nghĩa là: {idiom['explanation']}"
     base = {"idiomId": idiom["id"], "explanation": explanation, "type": qtype}
 
     if qtype == "meaning":
@@ -137,14 +137,19 @@ def build_question(
         traits = idiom.get("traits") or []
         options = [TRAIT_LABELS[t] for t in TRAIT_IDS] + ["Không mang đặc trưng nào"]
         answer = [i for i, t in enumerate(TRAIT_IDS) if t in traits] if traits else [len(TRAIT_IDS)]
-        labels = ", ".join(TRAIT_LABELS[t].lower() for t in traits) or "không có đặc trưng nào"
+        labels = ", ".join(TRAIT_LABELS[t].lower() for t in traits)
+        trait_note = (
+            f"“{idiom['phrase']}” có đặc trưng là {labels}."
+            if traits
+            else f"“{idiom['phrase']}” không mang đặc trưng ngôn ngữ nào."
+        )
         return {
             **base,
             "prompt": "Câu sau mang những đặc trưng ngôn ngữ nào? Chọn tất cả đáp án đúng.",
             "highlight": idiom["phrase"],
             "options": options,
             "answer": answer,
-            "explanation": f"“{idiom['phrase']}” được gán nhãn trong VIVID: {labels}.",
+            "explanation": trait_note,
         }
 
     if qtype == "topic":

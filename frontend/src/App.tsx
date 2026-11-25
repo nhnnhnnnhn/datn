@@ -18,8 +18,6 @@ import SetLearn from '@/pages/SetLearn'
 import SetMatch from '@/pages/SetMatch'
 import SetWrite from '@/pages/SetWrite'
 import Quiz from '@/pages/Quiz'
-import Assignments from '@/pages/Assignments'
-import AssignmentDetail from '@/pages/AssignmentDetail'
 import Classes from '@/pages/teacher/Classes'
 import ClassDetail from '@/pages/teacher/ClassDetail'
 import AssignmentNew from '@/pages/teacher/AssignmentNew'
@@ -77,8 +75,6 @@ export default function App() {
             <Route path="sets" element={<Sets />} />
             <Route path="sets/:deckId" element={<SetDetail />} />
             <Route path="quiz" element={<Quiz />} />
-            <Route path="assignments" element={<Assignments />} />
-            <Route path="assignments/:id" element={<AssignmentDetail />} />
           </Route>
           <Route path="teacher" element={<RequireRole role="teacher" />}>
             <Route index element={<Classes />} />

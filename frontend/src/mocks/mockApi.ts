@@ -416,10 +416,6 @@ const rawMockApi: Api = {
       if (!name.trim()) throw new ApiError(400, 'Vui lòng nhập tên lớp')
       return classroom.createClass(currentUser(), name)
     },
-    async join(code) {
-      await delay(300)
-      return classroom.joinClass(currentUser(), code)
-    },
     async students(id) {
       await delay(200)
       return classroom.students(currentUser(), id)
@@ -446,29 +442,6 @@ const rawMockApi: Api = {
     async submissions(id) {
       await delay(250)
       return classroom.submissions(currentUser(), id)
-    },
-    async mySubmission(id) {
-      await delay(150)
-      return classroom.mySubmission(currentUser(), id)
-    },
-    async submit(id, answers) {
-      await delay(1500)
-      const user = currentUser()
-      const submission = classroom.submit(user, id, answers)
-      const db = loadDb()
-      for (const item of submission.items) {
-        db.attempts.push({
-          id: uid(),
-          idiomId: item.idiomId,
-          phrase: item.phrase,
-          answer: item.answer,
-          ...gradeAnswer(idiomOrThrow(item.idiomId), item.answer),
-          reference: idiomOrThrow(item.idiomId).explanation,
-          createdAt: submission.submittedAt ?? new Date().toISOString(),
-        })
-      }
-      saveDb(db)
-      return submission
     },
     async review(submissionId, review) {
       await delay(300)

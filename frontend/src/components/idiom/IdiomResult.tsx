@@ -3,7 +3,6 @@ import type { Idiom } from '@/types'
 import { TOPICS } from '@/lib/constants'
 import { firstSentence } from '@/lib/text'
 import { IdiomTags } from './IdiomTags'
-import { VividRef } from './VividRef'
 
 export function IdiomResult({ idiom }: { idiom: Idiom }) {
   return (
@@ -19,9 +18,7 @@ export function IdiomResult({ idiom }: { idiom: Idiom }) {
         </div>
       </div>
       <div className="min-w-0">
-        <p className="text-xs text-stone-500">
-          <VividRef id={idiom.id} /> · {TOPICS[idiom.topic].label}
-        </p>
+        <p className="text-xs text-stone-500">{TOPICS[idiom.topic].label}</p>
         <p className="mt-1 text-[15px] leading-relaxed text-stone-800">
           <span className="mr-1.5 text-stone-400">1.</span>
           {firstSentence(idiom.explanation)}

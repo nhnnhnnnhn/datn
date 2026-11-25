@@ -313,14 +313,6 @@ export const classroom = {
     save(store)
     return classView(store, cls)
   },
-  joinClass(user: User, code: string): Classroom {
-    const store = load()
-    const cls = store.classes.find((c) => c.code === code.trim().toUpperCase())
-    if (!cls) throw new ApiError(404, 'Mã lớp không đúng')
-    if (!cls.studentIds.includes(user.id)) cls.studentIds.push(user.id)
-    save(store)
-    return classView(store, cls)
-  },
   students(user: User, id: string): ClassStudent[] {
     const store = load()
     classroom.getClass(user, id)
@@ -397,19 +389,6 @@ export const classroom = {
           },
       )
       .sort((a, b) => a.studentName.localeCompare(b.studentName, 'vi'))
-  },
-  mySubmission(user: User, id: string): Submission | null {
-    return load().submissions.find((s) => s.assignmentId === id && s.studentId === user.id) ?? null
-  },
-  submit(user: User, id: string, answers: { idiomId: number; answer: string }[]): Submission {
-    const store = load()
-    const asg = assignmentOrThrow(store, id)
-    const missing = asg.idiomIds.filter((idiomId) => !answers.find((a) => a.idiomId === idiomId)?.answer.trim())
-    if (missing.length) throw new ApiError(400, 'Em cần giải nghĩa đủ tất cả các câu trước khi nộp')
-    const submission = buildSubmission(asg, user.id, user.name, answers, Date.now())
-    store.submissions = [...store.submissions.filter((s) => !(s.assignmentId === id && s.studentId === user.id)), submission]
-    save(store)
-    return submission
   },
   review(user: User, submissionId: string, score: number, comment: string): Submission {
     if (user.role !== 'teacher') throw new ApiError(403, 'Chỉ giáo viên được chấm bài')

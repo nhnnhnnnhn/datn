@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
+import { useEffect, useRef, useState } from 'react'
+import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, ClipboardList, Flame, House, Layers, PenLine, Search, Users } from 'lucide-react'
+import { BookOpen, Flame, House, Layers, PenLine, Users } from 'lucide-react'
 import { api } from '@/api'
 import { useAuth } from '@/context/AuthContext'
-import { VIVID } from '@/lib/vivid'
+import { HeaderSearch } from './HeaderSearch'
 import { cn } from '@/lib/cn'
 
 const STUDENT_NAV = [
@@ -12,35 +12,12 @@ const STUDENT_NAV = [
   { to: '/idioms', label: 'Tra cứu', icon: BookOpen },
   { to: '/practice', label: 'Luyện viết', icon: PenLine },
   { to: '/sets', label: 'Bộ thẻ', icon: Layers },
-  { to: '/assignments', label: 'Bài tập', icon: ClipboardList },
 ]
 
 const TEACHER_NAV = [
   { to: '/teacher', label: 'Lớp học', icon: Users, end: false },
   { to: '/idioms', label: 'Tra cứu', icon: BookOpen },
 ]
-
-function HeaderSearch() {
-  const navigate = useNavigate()
-  const [q, setQ] = useState('')
-  function onSubmit(e: FormEvent) {
-    e.preventDefault()
-    if (q.trim()) navigate(`/idioms?q=${encodeURIComponent(q.trim())}`)
-    setQ('')
-  }
-  return (
-    <form onSubmit={onSubmit} role="search" className="relative hidden lg:block">
-      <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-stone-400" />
-      <input
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Tra thành ngữ, tục ngữ"
-        aria-label="Tra nhanh"
-        className="h-8 w-56 rounded-md border border-stone-300 bg-stone-50 pr-3 pl-8 text-sm placeholder:text-stone-400 focus:border-stone-500 focus:bg-white focus:outline-none"
-      />
-    </form>
-  )
-}
 
 function StreakCounter() {
   const { data } = useQuery({ queryKey: ['progress'], queryFn: api.progress.summary, meta: { tag: 'PROGRESS' } })
@@ -139,26 +116,13 @@ export function AppLayout() {
       </header>
 
 
-      <main className="mx-auto max-w-6xl px-4 pt-6 pb-8 md:pt-8 md:pb-24">
+      <main className="mx-auto max-w-6xl px-4 pt-6 pb-24 md:pt-8 md:pb-12">
         <Outlet />
       </main>
 
-      <footer className="border-t border-stone-200 bg-white pb-24 md:fixed md:inset-x-0 md:bottom-0 md:z-30 md:pb-0">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-1 px-4 py-4 text-xs text-stone-500">
-          <p>
-            Dữ liệu, nhãn đặc trưng và tiêu chí chấm: <span className="text-stone-700">VIVID ({VIVID.shortCite})</span> · giấy phép {VIVID.license}
-          </p>
-          <a href={VIVID.arxivUrl} target="_blank" rel="noreferrer" className="font-medium text-stone-700 hover:text-brand-700">
-            Bài báo VIVID
-          </a>
-        </div>
-      </footer>
-
       <nav
-        className={cn(
-          'fixed inset-x-0 bottom-0 z-30 grid border-t border-stone-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden',
-          nav.length === 5 ? 'grid-cols-5' : 'grid-cols-2',
-        )}
+        className="fixed inset-x-0 bottom-0 z-30 grid border-t border-stone-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
+        style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }}
       >
         {nav.map(({ to, label, icon: Icon, end }) => (
           <NavLink

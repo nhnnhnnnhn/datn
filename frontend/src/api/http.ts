@@ -47,7 +47,6 @@ export const httpApi: Api = {
     list: () => request('GET', '/classes'),
     get: (id) => request('GET', `/classes/${id}`),
     create: (name) => request('POST', '/classes', { body: { name } }),
-    join: (code) => request('POST', '/classes/join', { body: { code } }),
     students: (id) => request('GET', `/classes/${id}/students`),
     report: (id) => request('GET', `/classes/${id}/report`),
   },
@@ -56,8 +55,6 @@ export const httpApi: Api = {
     get: (id) => request('GET', `/assignments/${id}`),
     create: (input) => request('POST', '/assignments', { body: input }),
     submissions: (id) => request('GET', `/assignments/${id}/submissions`),
-    mySubmission: (id) => request('GET', `/assignments/${id}/submissions/me`),
-    submit: (id, answers) => request('POST', `/assignments/${id}/submissions`, { body: { answers } }),
     review: (submissionId, review) => request('POST', `/submissions/${submissionId}/review`, { body: review }),
   },
 }
