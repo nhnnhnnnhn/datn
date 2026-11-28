@@ -6,6 +6,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { Spinner } from '@/components/ui/Feedback'
 import { createLogger } from '@/lib/logger'
 import ForgotPassword from '@/pages/ForgotPassword'
+import Landing from '@/pages/Landing'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import Idioms from '@/pages/Idioms'
@@ -37,6 +38,7 @@ function RequireAuth({ children }: { children: ReactNode }) {
   const location = useLocation()
   if (loading) return <Spinner className="min-h-dvh" />
   if (!user) {
+    if (location.pathname === '/') return <Landing />
     log.debug('redirect to login', { from: location.pathname })
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
   }

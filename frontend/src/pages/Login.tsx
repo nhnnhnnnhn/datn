@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { ApiError } from '@/api/client'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/Button'
@@ -17,7 +17,8 @@ export default function Login() {
   const { user, login, register } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [params] = useSearchParams()
+  const [mode, setMode] = useState<'login' | 'register'>(params.get('mode') === 'register' ? 'register' : 'login')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
