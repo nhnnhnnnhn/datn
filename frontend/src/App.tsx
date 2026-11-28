@@ -21,7 +21,7 @@ import Quiz from '@/pages/Quiz'
 import NotFound from '@/pages/NotFound'
 import Profile from '@/pages/Profile'
 import AdminHome from '@/pages/admin/AdminHome'
-import { homePath } from '@/lib/role'
+import { appRole, homePath } from '@/lib/role'
 
 const log = createLogger('ROUTER')
 
@@ -45,9 +45,10 @@ function RequireAuth({ children }: { children: ReactNode }) {
 
 function RequireRole({ role }: { role: Role }) {
   const { user } = useAuth()
-  if (user?.role !== role) {
-    log.debug('role mismatch, redirecting', { need: role, have: user?.role })
-    return <Navigate to={homePath(user?.role)} replace />
+  const current = appRole(user?.role)
+  if (current !== role) {
+    log.debug('role mismatch, redirecting', { need: role, have: current })
+    return <Navigate to={homePath(current)} replace />
   }
   return <Outlet />
 }

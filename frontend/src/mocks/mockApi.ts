@@ -6,7 +6,7 @@ import { masteryFromScore } from '@/lib/mastery'
 import { isDue, isLearned, isNewCard, newSrs, schedule } from '@/lib/srs'
 import { normalize, sameAnswer, toDateKey } from '@/lib/text'
 import { createLogger } from '@/lib/logger'
-import { IDIOMS } from './idioms.data'
+import { IDIOMS, idiomIndex, type SearchEntry } from './idiomStore'
 import { gradeAnswer } from './grader'
 import { generateQuestions } from './quizGen'
 import { adminMock, DEMO_ADMIN_EMAIL, ensureDemoAdmin, isActive, migrateLegacy } from './admin'
@@ -15,11 +15,8 @@ import { delay, pick, read, remove, shuffle, uid, write } from './store'
 
 migrateLegacy()
 
-const ALPHABETICAL =[...IDIOMS].sort((a, b) => a.phrase.localeCompare(b.phrase, 'vi'))
-const SEARCH_INDEX = IDIOMS.map((i) => ({ phrase: ` ${normalize(i.phrase)} `, explanation: normalize(i.explanation) }))
-
 // Lower is better: phrase prefix, whole-word match in the phrase, partial phrase match, then meaning
-function searchRank(entry: (typeof SEARCH_INDEX)[number], q: string): number {
+function searchRank(entry: SearchEntry, q: string): number {
   if (entry.phrase.startsWith(` ${q}`)) return 0
   if (entry.phrase.includes(` ${q} `)) return 1
   if (entry.phrase.includes(q)) return 2
@@ -150,9 +147,29 @@ const rawMockApi: Api = {
       await delay(250)
       return adminMock.users(query)
     },
-    async setUserActive(id, active) {
+    async createUser(input) {
+      await delay(400)
+      return adminMock.createUser(input)
+    },
+    async updateUser(id, patch) {
       await delay(250)
-      return adminMock.setUserActive(id, active)
+      return adminMock.updateUser(id, patch)
+    },
+    async deleteUser(id) {
+      await delay(300)
+      adminMock.deleteUser(id)
+    },
+    async createIdiom(input) {
+      await delay(400)
+      return adminMock.createIdiom(input)
+    },
+    async updateIdiom(id, input) {
+      await delay(400)
+      return adminMock.updateIdiom(id, input)
+    },
+    async archiveIdiom(id) {
+      await delay(300)
+      adminMock.archiveIdiom(id)
     },
   },
 
@@ -160,7 +177,8 @@ const rawMockApi: Api = {
     async list({ q, topic, trait, page = 1, pageSize = 20 }) {
       await delay(200)
       const nq = q ? normalize(q) : ''
-      const ranked = IDIOMS.map((idiom, i) => ({ idiom, rank: nq ? searchRank(SEARCH_INDEX[i], nq) : 0 })).filter(
+      const { search } = idiomIndex()
+      const ranked = IDIOMS.map((idiom, i) => ({ idiom, rank: nq ? searchRank(search[i], nq) : 0 })).filter(
         ({ idiom, rank }) => rank >= 0 && (!topic || idiom.topic === topic) && (!trait || idiom.traits.includes(trait)),
       )
       ranked.sort((a, b) => a.rank - b.rank || a.idiom.phrase.localeCompare(b.idiom.phrase, 'vi'))
@@ -184,9 +202,13 @@ const rawMockApi: Api = {
     },
     async neighbors(id) {
       await delay(120)
-      const index = ALPHABETICAL.findIndex((i) => i.id === id)
-      if (index < 0) throw new ApiError(404, 'Không tìm thấy thành ngữ')
-      return ALPHABETICAL.slice(Math.max(0, index - 3), index + 4)
+      const { alphabetical } = idiomIndex()
+      const index = alphabetical.findIndex((i) => i.id === id)
+      if (index < 0) {
+        idiomOrThrow(id)
+        return []
+      }
+      return alphabetical.slice(Math.max(0, index - 3), index + 4)
     },
   },
 

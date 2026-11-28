@@ -1,6 +1,8 @@
 import type {
   AdminStats,
   AdminUser,
+  AdminUserInput,
+  AdminUserPatch,
   AdminUserQuery,
   AuthResponse,
   Deck,
@@ -9,6 +11,7 @@ import type {
   ForgotPasswordResponse,
   GradingResult,
   Idiom,
+  IdiomInput,
   IdiomQuery,
   Paginated,
   ProfileUpdate,
@@ -36,7 +39,12 @@ export interface Api {
   admin: {
     stats(): Promise<AdminStats>
     users(query: AdminUserQuery): Promise<Paginated<AdminUser>>
-    setUserActive(id: string, active: boolean): Promise<AdminUser>
+    createUser(input: AdminUserInput): Promise<AdminUser>
+    updateUser(id: string, patch: AdminUserPatch): Promise<AdminUser>
+    deleteUser(id: string): Promise<void>
+    createIdiom(input: IdiomInput): Promise<Idiom>
+    updateIdiom(id: number, input: IdiomInput): Promise<Idiom>
+    archiveIdiom(id: number): Promise<void>
   }
   idioms: {
     list(query: IdiomQuery): Promise<Paginated<Idiom>>

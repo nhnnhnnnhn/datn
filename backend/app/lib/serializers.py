@@ -15,9 +15,21 @@ def user_out(user: User) -> dict:
         "id": str(user.id),
         "name": user.full_name,
         "email": user.email,
-        "role": user.role if user.role in ("student", "teacher") else "student",
+        "role": user.role if user.role in ("student", "teacher", "admin") else "student",
         "dailyGoal": user.daily_goal or 10,
         "createdAt": iso(user.created_at) or "",
+    }
+
+
+def admin_user_out(user: User, last_active_at: datetime | None) -> dict:
+    return {
+        "id": str(user.id),
+        "name": user.full_name,
+        "email": user.email,
+        "role": user.role if user.role in ("student", "teacher", "admin") else "student",
+        "active": bool(user.is_active),
+        "createdAt": iso(user.created_at) or "",
+        "lastActiveAt": iso(last_active_at),
     }
 
 

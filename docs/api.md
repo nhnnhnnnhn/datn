@@ -63,7 +63,7 @@ today; the backend may add more.
 - Password reset: `/auth/forgot-password` issues a **6-digit** code and emails it when SMTP is set
   (response is only `{ message }`). `/auth/reset-password` accepts that code as `token`.
 - **OPEN:** logout. The client only drops the token; no endpoint is called.
-- Roles are `student` and `admin` only. Registration always creates a student; admins are created by
+- Roles: `student`, `admin`, and a legacy `teacher` the web app does not use (it treats it as a student). Registration never creates an admin; admins are created by
   an admin or promoted in the database.
 - **OPEN:** validation errors: the mock returns 400 with a string `detail`; FastAPI's default is
   422 with a list. The client handles both.
@@ -71,22 +71,28 @@ today; the backend may add more.
 ### Admin
 
 Only `role = 'admin'` may call these (403 otherwise). Admin accounts are not created through
-`/auth/register`; promote an existing user in the database. `User.role` becomes
-`'student' | 'admin'`. A locked account cannot log in: `POST /auth/login` answers
-403 `Tài khoản đã bị khóa`.
+`/auth/register`; an admin creates them (`POST /admin/users`) or they are promoted in the
+database. `User.role` is `'student' | 'teacher' | 'admin'`. A locked account cannot log in:
+`POST /auth/login` answers 403 `Tài khoản đã bị khóa`.
 
 | Method | Path | Body / query | Response | Errors |
 |---|---|---|---|---|
 | GET | `/admin/stats` | — | `AdminStats` | 403 |
 | GET | `/admin/users` | `q?` (name or email), `role?`, `page?`, `pageSize?` (≤ 100) | `Paginated<AdminUser>` newest first | 403 |
-| PATCH | `/admin/users/{id}` | `{ active: boolean }` | `AdminUser` | 400 locking yourself, 403, 404 |
+| POST | `/admin/users` | `{ name, email, password, role }` | `AdminUser` (201) | 400 invalid input or password < 6, 403, 409 email taken |
+| PATCH | `/admin/users/{id}` | `{ name?, role?, active? }` (at least one) | `AdminUser` | 400 invalid, changing your own `role` or `active`, or leaving no active admin; 403; 404 |
+| DELETE | `/admin/users/{id}` | — | 204; also deletes the user's learning data | 400 deleting yourself or the last active admin, 403, 404 |
 
-- `AdminStats`: `users { total, students, admins, newLast7Days }`, `content { idioms }`,
+- You may change your own `name`; you may not change your own `role` or `active`, nor delete yourself.
+  No operation may leave the system without an active admin.
+
+- `AdminStats`: `users { total, students, admins, newLast7Days }`, `content { idioms, byTopic: Record<TopicId, number> }` (active idioms per topic, summing to `idioms`),
   `activity { gradings, quizzes, flashcardReviews }` (all-time totals), `signupsByDay[]` of
   `{ date: 'YYYY-MM-DD', count }` for the last 14 days, oldest first, zero-filled.
 - `AdminUser`: `id, name, email, role, active, createdAt, lastActiveAt` (`null` if never active;
   latest of grading, quiz or flashcard review).
-- **OPEN:** a locked user's existing token should stop working (401), not only block new logins.
+- A locked user's existing token answers 401 `Tài khoản đã bị khóa`, so the client signs out; a new
+  sign-in answers 403 with the same text.
 
 ### Idioms
 
@@ -96,8 +102,15 @@ Only `role = 'admin'` may call these (403 otherwise). Admin accounts are not cre
 | GET | `/idioms/daily` | — | `Idiom` | — |
 | GET | `/idioms/random` | `topic?, trait?` | `Idiom` | — |
 | GET | `/idioms/{id}` | — | `Idiom` | 404 |
-| GET | `/idioms/{id}/neighbors` | — | `Idiom[]` (alphabetical neighbours, up to 7 incl. itself) | 404 |
+| GET | `/idioms/{id}/neighbors` | — | `Idiom[]` (alphabetical neighbours, up to 7 incl. itself; `[]` for an archived idiom) | 404 |
+| POST | `/admin/idioms` | `IdiomInput` `{ phrase, explanation, topic, traits[], note?, citation?, glossary? }` | `Idiom` (201) | 400 invalid, 403, 409 duplicate phrase (case and diacritics ignored) |
+| PATCH | `/admin/idioms/{id}` | `IdiomInput` (replaces every editable field) | `Idiom` | 400, 403, 404 (also when archived), 409 duplicate phrase |
+| DELETE | `/admin/idioms/{id}` | — | 204; archives the idiom (suggest an `archived_at` column) | 403, 404 |
 
+- Admin only for the three writes. **Deleting archives:** an archived idiom is left out of `GET /idioms`,
+  `daily`, `random`, `neighbors` and of decks and quizzes generated afterwards, but `GET /idioms/{id}`
+  still returns it so grading history and flashcards that reference it keep working.
+  There is no restore endpoint. A new idiom gets the next integer id.
 - **OPEN:** default and maximum `pageSize` (the mock defaults to 20).
 - **OPEN:** search ranking. The mock ranks phrase prefix, whole word, partial phrase, then
   explanation, accent-insensitive.

@@ -1,24 +1,48 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router'
+import { Link, Outlet, useLocation, useSearchParams } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, Flame, House, Layers, PenLine, ShieldCheck } from 'lucide-react'
+import { BookOpen, Flame, House, Layers, PenLine } from 'lucide-react'
 import { api } from '@/api'
+import type { Role } from '@/types'
 import { useAuth } from '@/context/AuthContext'
-import { ROLE_LABEL, homePath } from '@/lib/role'
+import { ADMIN_TABS, parseAdminTab } from '@/lib/adminTabs'
+import { homePath, roleLabel } from '@/lib/role'
 import { HeaderSearch } from './HeaderSearch'
 import { cn } from '@/lib/cn'
 
+interface NavItem {
+  to: string
+  label: string
+  icon: typeof House
+  active: boolean
+}
+
 const STUDENT_NAV = [
   { to: '/', label: 'Trang chủ', icon: House, end: true },
-  { to: '/idioms', label: 'Tra cứu', icon: BookOpen },
-  { to: '/practice', label: 'Luyện viết', icon: PenLine },
-  { to: '/sets', label: 'Bộ thẻ', icon: Layers },
+  { to: '/idioms', label: 'Tra cứu', icon: BookOpen, end: false },
+  { to: '/practice', label: 'Luyện viết', icon: PenLine, end: false },
+  { to: '/sets', label: 'Bộ thẻ', icon: Layers, end: false },
 ]
 
-const ADMIN_NAV = [
-  { to: '/admin', label: 'Quản trị', icon: ShieldCheck, end: false },
-  { to: '/idioms', label: 'Tra cứu', icon: BookOpen },
-]
+function useNavItems(role: Role | undefined): NavItem[] {
+  const { pathname } = useLocation()
+  const [params] = useSearchParams()
+  if (role === 'admin') {
+    const current = parseAdminTab(params.get('tab'))
+    return ADMIN_TABS.map(({ tab, label, icon }) => ({
+      to: `/admin?tab=${tab}`,
+      label,
+      icon,
+      active: pathname === '/admin' && current === tab,
+    }))
+  }
+  return STUDENT_NAV.map(({ to, label, icon, end }) => ({
+    to,
+    label,
+    icon,
+    active: end ? pathname === to : pathname === to || pathname.startsWith(`${to}/`),
+  }))
+}
 
 function StreakCounter() {
   const { data } = useQuery({ queryKey: ['progress'], queryFn: api.progress.summary, meta: { tag: 'PROGRESS' } })
@@ -67,7 +91,7 @@ function UserMenu() {
           <div className="border-b border-stone-100 px-3 py-2">
             <div className="truncate font-medium text-stone-900">{user.name}</div>
             <div className="truncate text-xs text-stone-500">
-              {ROLE_LABEL[user.role]} · {user.email}
+              {roleLabel(user.role)} · {user.email}
             </div>
           </div>
           <Link to="/profile" className="block px-3 py-2 text-stone-700 hover:bg-stone-50">
@@ -84,8 +108,7 @@ function UserMenu() {
 
 export function AppLayout() {
   const { user } = useAuth()
-  const nav: { to: string; label: string; icon: typeof House; end?: boolean }[] =
-    user?.role === 'admin' ? ADMIN_NAV : STUDENT_NAV
+  const nav = useNavItems(user?.role)
 
   return (
     <div className="min-h-dvh">
@@ -96,24 +119,22 @@ export function AppLayout() {
             <span className="hidden text-sm text-stone-500 sm:inline">Thành ngữ Việt</span>
           </Link>
           <nav className="hidden h-full items-stretch gap-5 md:flex">
-            {nav.map(({ to, label, end }) => (
-              <NavLink
+            {nav.map(({ to, label, active }) => (
+              <Link
                 key={to}
                 to={to}
-                end={end}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center border-b-2 text-sm transition-colors',
-                    isActive ? 'border-brand-600 font-medium text-stone-900' : 'border-transparent text-stone-600 hover:text-stone-900',
-                  )
-                }
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'flex items-center border-b-2 text-sm transition-colors',
+                  active ? 'border-brand-600 font-medium text-stone-900' : 'border-transparent text-stone-600 hover:text-stone-900',
+                )}
               >
                 {label}
-              </NavLink>
+              </Link>
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-4">
-            <HeaderSearch />
+            {user?.role !== 'admin' && <HeaderSearch />}
             {user?.role === 'student' && <StreakCounter />}
             <UserMenu />
           </div>
@@ -129,18 +150,16 @@ export function AppLayout() {
         className="fixed inset-x-0 bottom-0 z-30 grid border-t border-stone-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
         style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }}
       >
-        {nav.map(({ to, label, icon: Icon, end }) => (
-          <NavLink
+        {nav.map(({ to, label, icon: Icon, active }) => (
+          <Link
             key={to}
             to={to}
-            end={end}
-            className={({ isActive }) =>
-              cn('flex flex-col items-center gap-0.5 py-2 text-[10px]', isActive ? 'font-semibold text-brand-700' : 'text-stone-500')
-            }
+            aria-current={active ? 'page' : undefined}
+            className={cn('flex flex-col items-center gap-0.5 py-2 text-[10px]', active ? 'font-semibold text-brand-700' : 'text-stone-500')}
           >
             <Icon className="size-5" />
             {label}
-          </NavLink>
+          </Link>
         ))}
       </nav>
     </div>

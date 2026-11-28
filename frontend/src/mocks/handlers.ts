@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw/http'
 import { delay } from 'msw/utils/delay'
 import { ApiError, BASE_URL } from '@/api/client'
-import type { DeckGenerateConfig, QuizAnswer, QuizConfig, ReviewRating, Role, SignUpRole, ProfileUpdate, TopicId, TraitId, User } from '@/types'
+import type { AdminUserInput, AdminUserPatch, DeckGenerateConfig, IdiomInput, QuizAnswer, QuizConfig, ReviewRating, Role, SignUpRole, ProfileUpdate, TopicId, TraitId, User } from '@/types'
 import { mockApi } from './mockApi'
 import { read, write } from './store'
 
@@ -89,10 +89,16 @@ export const handlers = [
       pageSize: num(query.get('pageSize')),
     }),
   ),
-  route('patch', '/admin/users/:id', async ({ params, request }) => {
-    const { active } = await body<{ active: boolean }>(request)
-    return mockApi.admin.setUserActive(params.id, active)
-  }),
+  route('post', '/admin/users', async ({ request }) => mockApi.admin.createUser(await body<AdminUserInput>(request))),
+  route('patch', '/admin/users/:id', async ({ params, request }) =>
+    mockApi.admin.updateUser(params.id, await body<AdminUserPatch>(request)),
+  ),
+  route('delete', '/admin/users/:id', ({ params }) => mockApi.admin.deleteUser(params.id)),
+  route('post', '/admin/idioms', async ({ request }) => mockApi.admin.createIdiom(await body<IdiomInput>(request))),
+  route('patch', '/admin/idioms/:id', async ({ params, request }) =>
+    mockApi.admin.updateIdiom(Number(params.id), await body<IdiomInput>(request)),
+  ),
+  route('delete', '/admin/idioms/:id', ({ params }) => mockApi.admin.archiveIdiom(Number(params.id))),
 
   route('get', '/idioms', ({ query }) =>
     mockApi.idioms.list({

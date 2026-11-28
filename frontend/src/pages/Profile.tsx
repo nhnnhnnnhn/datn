@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { PageHeader, Panel } from '@/components/ui/Card'
 import { Input, Label } from '@/components/ui/Field'
 import { ErrorMessage } from '@/components/ui/Feedback'
-import { ROLE_LABEL } from '@/lib/role'
+import { roleLabel } from '@/lib/role'
 
 const MIN_PASSWORD_LENGTH = 6
 
@@ -53,7 +53,7 @@ function InfoForm() {
         <div>
           <Label htmlFor="email">Email</Label>
           <Input id="email" value={user.email} readOnly disabled />
-          <p className="mt-1 text-xs text-stone-500">{ROLE_LABEL[user.role]} · email không đổi được.</p>
+          <p className="mt-1 text-xs text-stone-500">{roleLabel(user.role)} · email không đổi được.</p>
         </div>
         {user.role === 'student' && (
           <div>

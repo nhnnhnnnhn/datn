@@ -1,13 +1,18 @@
+import { useSearchParams } from 'react-router'
+import { IdiomsSection } from '@/components/admin/IdiomsSection'
 import { StatsSection } from '@/components/admin/StatsSection'
 import { UsersSection } from '@/components/admin/UsersSection'
-import { PageHeader } from '@/components/ui/Card'
+import { parseAdminTab } from '@/lib/adminTabs'
 
 export default function AdminHome() {
+  const [params] = useSearchParams()
+  const tab = parseAdminTab(params.get('tab'))
+
   return (
-    <div className="space-y-10">
-      <PageHeader title="Quản trị" description="Thống kê hệ thống và quản lý tài khoản người dùng." />
-      <StatsSection />
-      <UsersSection />
-    </div>
+    <>
+      {tab === 'overview' && <StatsSection />}
+      {tab === 'users' && <UsersSection />}
+      {tab === 'idioms' && <IdiomsSection />}
+    </>
   )
 }

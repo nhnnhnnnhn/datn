@@ -59,7 +59,11 @@ def _ensure_default_decks(db: Session, user: User) -> None:
     _saved_deck(db, user)
     now = datetime.now(UTC)
     for topic, aspect_id in ASPECT_ID_BY_TOPIC.items():
-        idioms = db.query(Idiom).filter(Idiom.aspects.any(IdiomAspect.id == aspect_id)).all()
+        idioms = (
+            db.query(Idiom)
+            .filter(Idiom.archived_at.is_(None), Idiom.aspects.any(IdiomAspect.id == aspect_id))
+            .all()
+        )
         if not idioms:
             continue
         deck = Deck(
@@ -117,7 +121,7 @@ def generate_deck(db: Session, user: User, config: dict) -> dict:
     from_weak = bool(config.get("fromWeak"))
     name = (config.get("name") or "").strip()
 
-    query = db.query(Idiom).options(joinedload(Idiom.aspects))
+    query = db.query(Idiom).options(joinedload(Idiom.aspects)).filter(Idiom.archived_at.is_(None))
     criteria_bits: list[str] = []
 
     if from_weak:

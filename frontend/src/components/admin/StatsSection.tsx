@@ -2,6 +2,11 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/api'
 import { Panel, Section } from '@/components/ui/Card'
 import { ErrorMessage, Spinner } from '@/components/ui/Feedback'
+import { TOPICS, TOPIC_IDS } from '@/lib/constants'
+import { AreaChart } from './charts/AreaChart'
+import { BarList } from './charts/BarList'
+import { ChartCard } from './charts/ChartCard'
+import { DonutChart } from './charts/DonutChart'
 
 function Tile({ label, value }: { label: string; value: number }) {
   return (
@@ -19,7 +24,7 @@ export function StatsSection() {
   if (!stats.data) return <Spinner />
 
   const { users, content, activity, signupsByDay } = stats.data
-  const peak = Math.max(1, ...signupsByDay.map((d) => d.count))
+  const topics = TOPIC_IDS.map((id) => ({ label: TOPICS[id].label, value: content.byTopic[id] ?? 0 })).sort((a, b) => b.value - a.value)
 
   return (
     <Section title="Tổng quan">
@@ -28,26 +33,26 @@ export function StatsSection() {
         <Tile label="Học sinh" value={users.students} />
         <Tile label="Quản trị viên" value={users.admins} />
         <Tile label="Đăng ký 7 ngày qua" value={users.newLast7Days} />
-        <Tile label="Thành ngữ trong kho" value={content.idioms} />
-        <Tile label="Lượt chấm bài viết" value={activity.gradings} />
-        <Tile label="Lượt làm trắc nghiệm" value={activity.quizzes} />
-        <Tile label="Lượt ôn thẻ" value={activity.flashcardReviews} />
       </div>
 
-      <Panel className="mt-4 p-4">
-        <p className="text-sm font-medium text-stone-700">Đăng ký mới theo ngày (14 ngày)</p>
-        <ul className="mt-3 flex h-24 items-end gap-1.5" aria-label="Đăng ký mới theo ngày">
-          {signupsByDay.map((d) => (
-            <li key={d.date} className="flex h-full flex-1 flex-col justify-end" title={`${d.date}: ${d.count}`}>
-              <div className="min-h-px rounded-t bg-brand-600" style={{ height: `${(d.count / peak) * 100}%` }} />
-            </li>
-          ))}
-        </ul>
-        <div className="mt-1 flex justify-between text-xs text-stone-500">
-          <span>{signupsByDay[0]?.date}</span>
-          <span>{signupsByDay.at(-1)?.date}</span>
-        </div>
-      </Panel>
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <ChartCard title="Đăng ký mới" subtitle="14 ngày gần nhất" className="lg:col-span-2">
+          <AreaChart data={signupsByDay.map((d) => ({ date: d.date, value: d.count }))} unit="đăng ký" />
+        </ChartCard>
+        <ChartCard title="Hoạt động học tập" subtitle="Tổng số lượt">
+          <DonutChart
+            centerLabel="lượt học"
+            slices={[
+              { label: 'Chấm bài viết', value: activity.gradings, color: '#b93a2e' },
+              { label: 'Làm trắc nghiệm', value: activity.quizzes, color: '#3b6fe0' },
+              { label: 'Ôn thẻ', value: activity.flashcardReviews, color: '#0f766e' },
+            ]}
+          />
+        </ChartCard>
+        <ChartCard title="Thành ngữ theo chủ đề" subtitle={`${content.idioms.toLocaleString('vi-VN')} câu`} className="lg:col-span-3">
+          <BarList items={topics} unit="câu" />
+        </ChartCard>
+      </div>
     </Section>
   )
 }

@@ -2,8 +2,10 @@ import { ApiError } from '@/api/client'
 import type { DeckSource, GradingResult, Idiom, Quiz, QuizResult, ReviewRating, SrsState, TopicId, User } from '@/types'
 import { TOPICS, TOPIC_IDS } from '@/lib/constants'
 import { newSrs, schedule } from '@/lib/srs'
-import { IDIOMS } from './idioms.data'
+import { IDIOMS, byId } from './idiomStore'
 import { pick, read, seededRandom, shuffle, uid, write } from './store'
+
+export { byId }
 
 export interface StoredDeck {
   id: string
@@ -38,7 +40,6 @@ export interface Db {
 }
 
 export const DAY = 86_400_000
-export const byId = new Map(IDIOMS.map((i) => [i.id, i]))
 
 export const dbKey = (userId: string) => `db:v3:${userId}`
 

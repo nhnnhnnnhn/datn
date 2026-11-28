@@ -61,11 +61,56 @@ body {
   transform: rotateY(180deg);
 }
 
+@keyframes chart-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes chart-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes chart-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes chart-donut {
+  from {
+    stroke-dasharray: 0 var(--circ);
+  }
+}
+
+.chart-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: chart-draw 0.9s ease-out 0.1s forwards;
+}
+.chart-fade {
+  animation: chart-fade 0.7s ease-out 0.5s backwards;
+}
+.chart-grow {
+  animation: chart-grow 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+.chart-donut {
+  animation: chart-donut 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .flip-card {
     transition: none;
   }
   .animate-sheet-up {
+    animation: none;
+  }
+  .chart-draw {
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+  .chart-fade,
+  .chart-grow,
+  .chart-donut {
     animation: none;
   }
 }

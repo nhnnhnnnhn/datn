@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import app.models
-from app.api import auth, flashcards, grading, idioms, progress, quizzes
+from app.api import admin, auth, flashcards, grading, idioms, progress, quizzes
 from app.core.config import get_settings
 from app.core.log import RequestContextMiddleware, get_logger, setup_logging
 
@@ -25,6 +25,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(admin.router)
 app.include_router(idioms.router)
 app.include_router(grading.router)
 app.include_router(quizzes.router)

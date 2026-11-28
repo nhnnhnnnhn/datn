@@ -60,13 +60,13 @@ interface ConfirmDialogProps {
   onCancel: () => void
 }
 
-export function ConfirmDialog({ open, title, message, confirmLabel = 'Xoá', pending, onConfirm, onCancel }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, title, message, confirmLabel = 'Xóa', pending, onConfirm, onCancel }: ConfirmDialogProps) {
   return (
     <Dialog open={open} title={title} onClose={onCancel}>
       <div className="text-[15px] leading-relaxed text-stone-600">{message}</div>
       <div className="mt-5 flex justify-end gap-2">
         <Button variant="outline" onClick={onCancel} disabled={pending}>
-          Huỷ
+          Hủy
         </Button>
         <Button variant="danger" onClick={onConfirm} loading={pending}>
           {confirmLabel}

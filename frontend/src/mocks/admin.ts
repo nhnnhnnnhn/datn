@@ -1,9 +1,22 @@
 import { ApiError } from '@/api/client'
-import type { AdminStats, AdminUser, AdminUserQuery, Paginated, Role, User } from '@/types'
+import type {
+  AdminStats,
+  AdminUser,
+  AdminUserInput,
+  AdminUserPatch,
+  AdminUserQuery,
+  Idiom,
+  IdiomInput,
+  Paginated,
+  Role,
+  TopicId,
+  User,
+} from '@/types'
+import { TOPIC_IDS } from '@/lib/constants'
 import { normalize, toDateKey } from '@/lib/text'
-import { IDIOMS } from './idioms.data'
+import { IDIOMS, archiveIdiom, createIdiom, updateIdiom } from './idiomStore'
 import { DAY, currentUser, dbKey, type Db } from './db'
-import { read, remove, seededRandom, write } from './store'
+import { read, remove, seededRandom, uid, write } from './store'
 
 export const DEMO_ADMIN_EMAIL = 'demo.quantri@vivid.test'
 const SIGNUP_DAYS = 14
@@ -21,20 +34,29 @@ interface Row extends AdminUser {
 const FAMILY = ['Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Vũ', 'Đặng', 'Bùi', 'Đỗ', 'Ngô']
 const GIVEN = ['Minh Anh', 'Hải Long', 'Thu Hà', 'Quốc Bảo', 'Ngọc Lan', 'Đức Huy', 'Phương Thảo', 'Gia Hân', 'Khánh Linh', 'Tuấn Kiệt']
 
-function seededUsers(): Row[] {
+const SEEDED_FLAG = 'admin:seeded:v1'
+const SEED_META_KEY = 'admin:seedMeta:v1'
+
+interface SeedMeta {
+  lastActiveAt: string | null
+  activity: Activity
+}
+
+// Demo accounts that make the list and stats look lived in; once seeded they are ordinary stored users
+function ensureSeeded() {
+  if (read<boolean>(SEEDED_FLAG, false)) return
   const rng = seededRandom('admin-users')
   const now = Date.now()
-  return Array.from({ length: 24 }, (_, i) => {
+  const users = read<Record<string, User>>('users', {})
+  const meta: Record<string, SeedMeta> = {}
+  for (let i = 0; i < 24; i++) {
     const name = `${FAMILY[Math.floor(rng() * FAMILY.length)]} ${GIVEN[Math.floor(rng() * GIVEN.length)]}`
     const createdAt = new Date(now - Math.floor(rng() * 30) * DAY - Math.floor(rng() * DAY)).toISOString()
     const recentlyActive = rng() < 0.75
-    return {
-      id: `seed-${i}`,
-      name,
-      email: `${normalize(name).replace(/\s+/g, '.')}.${i}@vivid.test`,
-      role: 'student',
-      active: true,
-      createdAt,
+    const id = `seed-${i}`
+    const email = `${normalize(name).replace(/\s+/g, '.')}.${i}@vivid.test`
+    users[email] = { id, name, email, role: 'student', dailyGoal: 10, createdAt }
+    meta[id] = {
       lastActiveAt: recentlyActive ? new Date(now - Math.floor(rng() * 5) * DAY).toISOString() : null,
       activity: {
         gradings: recentlyActive ? Math.floor(rng() * 30) : 0,
@@ -42,10 +64,12 @@ function seededUsers(): Row[] {
         flashcardReviews: recentlyActive ? Math.floor(rng() * 200) : 0,
       },
     }
-  })
+  }
+  write('users', users)
+  write(SEED_META_KEY, meta)
+  write(SEEDED_FLAG, true)
 }
 
-const SEEDED = seededUsers()
 const inactiveIds = () => new Set(read<string[]>('admin:inactive', []))
 
 export function isActive(userId: string): boolean {
@@ -85,23 +109,50 @@ export function requireAdmin() {
 }
 
 function allUsers(): Row[] {
+  ensureSeeded()
   const inactive = inactiveIds()
   const session = currentUser()
-  const real = Object.values(read<Record<string, User>>('users', {})).map((u): Row => {
-    const db = read<Db | null>(dbKey(u.id), null)
-    return {
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      role: u.role ?? 'student',
-      active: !inactive.has(u.id),
-      createdAt: u.createdAt,
-      lastActiveAt: u.id === session.id ? new Date().toISOString() : null,
-      activity: db ? { gradings: db.attempts.length, quizzes: db.quizResults.length, flashcardReviews: db.reviews.length } : undefined,
-    }
-  })
-  const seeded = SEEDED.map((u) => ({ ...u, active: !inactive.has(u.id) }))
-  return [...real, ...seeded].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  const meta = read<Record<string, SeedMeta>>(SEED_META_KEY, {})
+  return Object.values(read<Record<string, User>>('users', {}))
+    .map((u): Row => {
+      const seed = meta[u.id]
+      const db = seed ? null : read<Db | null>(dbKey(u.id), null)
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role ?? 'student',
+        active: !inactive.has(u.id),
+        createdAt: u.createdAt,
+        lastActiveAt: seed ? seed.lastActiveAt : u.id === session.id ? new Date().toISOString() : null,
+        activity: seed
+          ? seed.activity
+          : db
+            ? { gradings: db.attempts.length, quizzes: db.quizResults.length, flashcardReviews: db.reviews.length }
+            : undefined,
+      }
+    })
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+}
+
+function findStored(id: string): { key: string; user: User } {
+  const entry = Object.entries(read<Record<string, User>>('users', {})).find(([, u]) => u.id === id)
+  if (!entry) throw new ApiError(404, 'Không tìm thấy người dùng')
+  return { key: entry[0], user: entry[1] }
+}
+
+function assertAdminRemains(users: User[], inactive: Set<string>) {
+  if (!users.some((u) => u.role === 'admin' && !inactive.has(u.id))) {
+    throw new ApiError(400, 'Hệ thống phải còn ít nhất một quản trị viên đang hoạt động')
+  }
+}
+
+const isRole = (value: string): value is Role => value === 'student' || value === 'admin'
+
+function byTopic(): Record<TopicId, number> {
+  const counts = Object.fromEntries(TOPIC_IDS.map((id) => [id, 0])) as Record<TopicId, number>
+  for (const idiom of IDIOMS) counts[idiom.topic] += 1
+  return counts
 }
 
 function toAdminUser(row: Row): AdminUser {
@@ -128,7 +179,7 @@ export const adminMock = {
         admins: count('admin'),
         newLast7Days: users.filter((u) => now - new Date(u.createdAt).getTime() < 7 * DAY).length,
       },
-      content: { idioms: IDIOMS.length },
+      content: { idioms: IDIOMS.length, byTopic: byTopic() },
       activity: { gradings: sum('gradings'), quizzes: sum('quizzes'), flashcardReviews: sum('flashcardReviews') },
       signupsByDay: Array.from({ length: SIGNUP_DAYS }, (_, i) => {
         const date = toDateKey(new Date(now - (SIGNUP_DAYS - 1 - i) * DAY))
@@ -146,15 +197,71 @@ export const adminMock = {
     return { items: rows.slice((page - 1) * pageSize, page * pageSize).map(toAdminUser), total: rows.length, page, pageSize }
   },
 
-  setUserActive(id: string, active: boolean): AdminUser {
+  createUser({ name, email, password, role }: AdminUserInput): AdminUser {
     requireAdmin()
-    if (id === currentUser().id) throw new ApiError(400, 'Bạn không thể khóa chính mình')
-    const user = allUsers().find((u) => u.id === id)
-    if (!user) throw new ApiError(404, 'Không tìm thấy người dùng')
+    if (!name.trim()) throw new ApiError(400, 'Vui lòng nhập họ tên')
+    const key = email.trim().toLowerCase()
+    if (!key.includes('@')) throw new ApiError(400, 'Email không hợp lệ')
+    if (password.length < 6) throw new ApiError(400, 'Mật khẩu cần tối thiểu 6 ký tự')
+    if (!isRole(role)) throw new ApiError(400, 'Vai trò không hợp lệ')
+    const users = read<Record<string, User>>('users', {})
+    if (users[key]) throw new ApiError(409, 'Email đã được đăng ký')
+    const user: User = { id: uid(), name: name.trim(), email: key, role, dailyGoal: 10, createdAt: new Date().toISOString() }
+    write('users', { ...users, [key]: user })
+    return toAdminUser(allUsers().find((u) => u.id === user.id)!)
+  },
+
+  updateUser(id: string, patch: AdminUserPatch): AdminUser {
+    requireAdmin()
+    const me = currentUser()
+    const { key, user } = findStored(id)
+    if (patch.name === undefined && patch.role === undefined && patch.active === undefined) {
+      throw new ApiError(400, 'Không có thay đổi nào để lưu')
+    }
+    if (patch.name !== undefined && !patch.name.trim()) throw new ApiError(400, 'Vui lòng nhập họ tên')
+    if (patch.role !== undefined && !isRole(patch.role)) throw new ApiError(400, 'Vai trò không hợp lệ')
+    if (id === me.id && (patch.role !== undefined || patch.active !== undefined)) {
+      throw new ApiError(400, 'Bạn không thể đổi vai trò hoặc khóa chính mình')
+    }
+    const updated: User = { ...user, name: patch.name?.trim() ?? user.name, role: patch.role ?? user.role }
     const inactive = inactiveIds()
-    if (active) inactive.delete(id)
-    else inactive.add(id)
+    if (patch.active === true) inactive.delete(id)
+    if (patch.active === false) inactive.add(id)
+    const users = { ...read<Record<string, User>>('users', {}), [key]: updated }
+    assertAdminRemains(Object.values(users), inactive)
+    write('users', users)
     write('admin:inactive', [...inactive])
-    return toAdminUser({ ...user, active })
+    if (id === me.id) write('session', updated)
+    return toAdminUser(allUsers().find((u) => u.id === id)!)
+  },
+
+  createIdiom(input: IdiomInput): Idiom {
+    requireAdmin()
+    return createIdiom(input)
+  },
+
+  updateIdiom(id: number, input: IdiomInput): Idiom {
+    requireAdmin()
+    return updateIdiom(id, input)
+  },
+
+  archiveIdiom(id: number): void {
+    requireAdmin()
+    archiveIdiom(id)
+  },
+
+  deleteUser(id: string): void {
+    requireAdmin()
+    if (id === currentUser().id) throw new ApiError(400, 'Bạn không thể xóa chính mình')
+    const { key } = findStored(id)
+    const { [key]: _removed, ...users } = read<Record<string, User>>('users', {})
+    const inactive = inactiveIds()
+    inactive.delete(id)
+    assertAdminRemains(Object.values(users), inactive)
+    const { [id]: _seed, ...meta } = read<Record<string, SeedMeta>>(SEED_META_KEY, {})
+    write('users', users)
+    write('admin:inactive', [...inactive])
+    write(SEED_META_KEY, meta)
+    remove(dbKey(id))
   },
 }

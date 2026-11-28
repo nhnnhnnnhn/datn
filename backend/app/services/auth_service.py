@@ -64,6 +64,8 @@ def login(db: Session, email: str, password: str) -> dict:
     user = db.query(User).filter(User.email == email).first()
     if not user or not verify_password(password, user.password_hash):
         raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Tài khoản đã bị khóa")
     return {"token": create_access_token(str(user.id)), "user": user_out(user)}
 
 

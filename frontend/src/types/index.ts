@@ -25,6 +25,8 @@ export interface Idiom {
   glossary?: GlossaryItem[]
 }
 
+export type IdiomInput = Omit<Idiom, 'id'>
+
 export interface IdiomQuery {
   q?: string
   topic?: TopicId
@@ -62,6 +64,19 @@ export interface AdminUser {
   lastActiveAt: string | null
 }
 
+export interface AdminUserInput {
+  name: string
+  email: string
+  password: string
+  role: Role
+}
+
+export interface AdminUserPatch {
+  name?: string
+  role?: Role
+  active?: boolean
+}
+
 export interface AdminUserQuery {
   q?: string
   role?: Role
@@ -71,7 +86,7 @@ export interface AdminUserQuery {
 
 export interface AdminStats {
   users: { total: number; students: number; admins: number; newLast7Days: number }
-  content: { idioms: number }
+  content: { idioms: number; byTopic: Record<TopicId, number> }
   activity: { gradings: number; quizzes: number; flashcardReviews: number }
   // Last 14 days, oldest first, one entry per day (YYYY-MM-DD)
   signupsByDay: { date: string; count: number }[]

@@ -18,7 +18,12 @@ export const httpApi: Api = {
   admin: {
     stats: () => request('GET', '/admin/stats'),
     users: (query) => request('GET', '/admin/users', { query: { ...query } }),
-    setUserActive: (id, active) => request('PATCH', `/admin/users/${id}`, { body: { active } }),
+    createUser: (input) => request('POST', '/admin/users', { body: input }),
+    updateUser: (id, patch) => request('PATCH', `/admin/users/${id}`, { body: patch }),
+    deleteUser: (id) => request('DELETE', `/admin/users/${id}`),
+    createIdiom: (input) => request('POST', '/admin/idioms', { body: input }),
+    updateIdiom: (id, input) => request('PATCH', `/admin/idioms/${id}`, { body: input }),
+    archiveIdiom: (id) => request('DELETE', `/admin/idioms/${id}`),
   },
   idioms: {
     list: (query) => request('GET', '/idioms', { query: { ...query } }),
