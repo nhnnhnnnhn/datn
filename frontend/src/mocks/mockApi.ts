@@ -6,18 +6,17 @@ import { masteryFromScore } from '@/lib/mastery'
 import { isDue, isLearned, isNewCard, newSrs, schedule } from '@/lib/srs'
 import { normalize, sameAnswer, toDateKey } from '@/lib/text'
 import { createLogger } from '@/lib/logger'
-import { IDIOMS } from './idioms.data'
+import { IDIOMS, idiomIndex, type SearchEntry } from './idiomStore'
 import { gradeAnswer } from './grader'
 import { generateQuestions } from './quizGen'
-import { classroom } from './classroom'
+import { adminMock, DEMO_ADMIN_EMAIL, ensureDemoAdmin, isActive, migrateLegacy } from './admin'
 import { DAY, avg, bestScores, byId, currentUser, idiomOrThrow, loadDb, saveDb, withRole, type Db, type StoredCard, type StoredDeck } from './db'
 import { delay, pick, read, remove, shuffle, uid, write } from './store'
 
-const ALPHABETICAL = [...IDIOMS].sort((a, b) => a.phrase.localeCompare(b.phrase, 'vi'))
-const SEARCH_INDEX = IDIOMS.map((i) => ({ phrase: ` ${normalize(i.phrase)} `, explanation: normalize(i.explanation) }))
+migrateLegacy()
 
 // Lower is better: phrase prefix, whole-word match in the phrase, partial phrase match, then meaning
-function searchRank(entry: (typeof SEARCH_INDEX)[number], q: string): number {
+function searchRank(entry: SearchEntry, q: string): number {
   if (entry.phrase.startsWith(` ${q}`)) return 0
   if (entry.phrase.includes(` ${q} `)) return 1
   if (entry.phrase.includes(q)) return 2
@@ -60,10 +59,11 @@ const rawMockApi: Api = {
     async login(email, password) {
       await delay(400)
       validateCredentials(email, password)
-      const users = read<Record<string, User>>('users', {})
       const key = email.trim().toLowerCase()
-      const user = users[key]
+      if (key === DEMO_ADMIN_EMAIL) ensureDemoAdmin()
+      const user = read<Record<string, User>>('users', {})[key]
       if (!user) throw new ApiError(401, 'Email chưa được đăng ký')
+      if (!isActive(user.id)) throw new ApiError(403, 'Tài khoản đã bị khóa')
       return startSession(withRole(user))
     },
     async register(name, email, password, role) {
@@ -75,8 +75,6 @@ const rawMockApi: Api = {
       if (users[key]) throw new ApiError(409, 'Email đã được đăng ký')
       const user: User = { id: uid(), name: name.trim(), email: key, role, dailyGoal: 10, createdAt: new Date().toISOString() }
       write('users', { ...users, [key]: user })
-      // Demo convenience: new students start inside the seeded class so assignments show up
-      if (role === 'student') classroom.enroll(user.id)
       return startSession(user)
     },
     async forgotPassword(email) {
@@ -103,6 +101,28 @@ const rawMockApi: Api = {
       write('reset-codes', codes)
       return startSession(withRole(user))
     },
+    async updateProfile(input) {
+      await delay(300)
+      const user = currentUser()
+      const name = input.name === undefined ? user.name : input.name.trim()
+      if (!name) throw new ApiError(400, 'Vui lòng nhập họ tên')
+      const dailyGoal = input.dailyGoal ?? user.dailyGoal
+      if (!Number.isInteger(dailyGoal) || dailyGoal < 1 || dailyGoal > 100) {
+        throw new ApiError(400, 'Mục tiêu mỗi ngày phải từ 1 đến 100')
+      }
+      const updated: User = { ...user, name, dailyGoal }
+      const users = read<Record<string, User>>('users', {})
+      write('users', { ...users, [user.email]: updated })
+      write('session', updated)
+      return updated
+    },
+    // The mock keeps no passwords, so only the new one is validated
+    async changePassword(currentPassword, newPassword) {
+      await delay(400)
+      currentUser()
+      if (!currentPassword) throw new ApiError(400, 'Vui lòng nhập mật khẩu hiện tại')
+      if (newPassword.length < 6) throw new ApiError(400, 'Mật khẩu cần tối thiểu 6 ký tự')
+    },
     async me() {
       await delay(100)
       try {
@@ -118,11 +138,47 @@ const rawMockApi: Api = {
     },
   },
 
+  admin: {
+    async stats() {
+      await delay(300)
+      return adminMock.stats()
+    },
+    async users(query) {
+      await delay(250)
+      return adminMock.users(query)
+    },
+    async createUser(input) {
+      await delay(400)
+      return adminMock.createUser(input)
+    },
+    async updateUser(id, patch) {
+      await delay(250)
+      return adminMock.updateUser(id, patch)
+    },
+    async deleteUser(id) {
+      await delay(300)
+      adminMock.deleteUser(id)
+    },
+    async createIdiom(input) {
+      await delay(400)
+      return adminMock.createIdiom(input)
+    },
+    async updateIdiom(id, input) {
+      await delay(400)
+      return adminMock.updateIdiom(id, input)
+    },
+    async archiveIdiom(id) {
+      await delay(300)
+      adminMock.archiveIdiom(id)
+    },
+  },
+
   idioms: {
     async list({ q, topic, trait, page = 1, pageSize = 20 }) {
       await delay(200)
       const nq = q ? normalize(q) : ''
-      const ranked = IDIOMS.map((idiom, i) => ({ idiom, rank: nq ? searchRank(SEARCH_INDEX[i], nq) : 0 })).filter(
+      const { search } = idiomIndex()
+      const ranked = IDIOMS.map((idiom, i) => ({ idiom, rank: nq ? searchRank(search[i], nq) : 0 })).filter(
         ({ idiom, rank }) => rank >= 0 && (!topic || idiom.topic === topic) && (!trait || idiom.traits.includes(trait)),
       )
       ranked.sort((a, b) => a.rank - b.rank || a.idiom.phrase.localeCompare(b.idiom.phrase, 'vi'))
@@ -146,9 +202,13 @@ const rawMockApi: Api = {
     },
     async neighbors(id) {
       await delay(120)
-      const index = ALPHABETICAL.findIndex((i) => i.id === id)
-      if (index < 0) throw new ApiError(404, 'Không tìm thấy thành ngữ')
-      return ALPHABETICAL.slice(Math.max(0, index - 3), index + 4)
+      const { alphabetical } = idiomIndex()
+      const index = alphabetical.findIndex((i) => i.id === id)
+      if (index < 0) {
+        idiomOrThrow(id)
+        return []
+      }
+      return alphabetical.slice(Math.max(0, index - 3), index + 4)
     },
   },
 
@@ -411,53 +471,6 @@ const rawMockApi: Api = {
         activity,
         weakIdioms,
       }
-    },
-  },
-
-  classes: {
-    async list() {
-      await delay(200)
-      return classroom.listClasses(currentUser())
-    },
-    async get(id) {
-      await delay(120)
-      return classroom.getClass(currentUser(), id)
-    },
-    async create(name) {
-      await delay(300)
-      if (!name.trim()) throw new ApiError(400, 'Vui lòng nhập tên lớp')
-      return classroom.createClass(currentUser(), name)
-    },
-    async students(id) {
-      await delay(200)
-      return classroom.students(currentUser(), id)
-    },
-    async report(id) {
-      await delay(300)
-      return classroom.report(currentUser(), id)
-    },
-  },
-
-  assignments: {
-    async list(classId) {
-      await delay(200)
-      return classroom.listAssignments(currentUser(), classId)
-    },
-    async get(id) {
-      await delay(120)
-      return classroom.getAssignment(currentUser(), id)
-    },
-    async create(input) {
-      await delay(400)
-      return classroom.createAssignment(currentUser(), input)
-    },
-    async submissions(id) {
-      await delay(250)
-      return classroom.submissions(currentUser(), id)
-    },
-    async review(submissionId, review) {
-      await delay(300)
-      return classroom.review(currentUser(), submissionId, review.score, review.comment)
     },
   },
 }

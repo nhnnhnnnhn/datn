@@ -1,4 +1,5 @@
 from app.services import (
+    admin_service,
     auth_service,
     flashcard_service,
     grading_service,
@@ -8,6 +9,7 @@ from app.services import (
 )
 
 __all__ = [
+    "admin_service",
     "auth_service",
     "flashcard_service",
     "grading_service",

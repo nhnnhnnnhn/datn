@@ -41,7 +41,9 @@ def _idiom_topic_traits(idiom: Idiom) -> tuple[str, list[str]]:
 
 
 def summary(db: Session, user: User) -> dict:
-    idioms = db.query(Idiom).options(joinedload(Idiom.aspects)).all()
+    idioms = (
+        db.query(Idiom).options(joinedload(Idiom.aspects)).filter(Idiom.archived_at.is_(None)).all()
+    )
     attempts = (
         db.query(Submission)
         .filter(Submission.user_id == user.id)

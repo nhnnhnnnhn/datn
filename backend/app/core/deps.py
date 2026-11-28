@@ -32,7 +32,24 @@ def get_current_user(creds: AuthCreds, db: DbSession) -> User:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Bạn cần đăng nhập",
         )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Tài khoản đã bị khóa",
+        )
     return user
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def require_admin(user: CurrentUser) -> User:
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bạn không có quyền truy cập",
+        )
+    return user
+
+
+AdminUser = Annotated[User, Depends(require_admin)]

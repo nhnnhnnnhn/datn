@@ -74,7 +74,9 @@ def generate(db: Session, user: User, config: dict) -> dict:
     else:
         use_llm = settings.quiz_use_llm
 
-    all_rows = db.query(Idiom).options(joinedload(Idiom.aspects)).all()
+    all_rows = (
+        db.query(Idiom).options(joinedload(Idiom.aspects)).filter(Idiom.archived_at.is_(None)).all()
+    )
     if not all_rows:
         raise HTTPException(status_code=400, detail="Không có thành ngữ để tạo quiz")
     all_dicts = [idiom_out(i) for i in all_rows]

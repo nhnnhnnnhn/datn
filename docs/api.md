@@ -51,7 +51,9 @@ today; the backend may add more.
 | Method | Path | Body / query | Response | Errors |
 |---|---|---|---|---|
 | POST | `/auth/login` | `{ email, password }` | `AuthResponse` `{ token, user: User }` | 400 invalid input, 401 wrong credentials |
-| POST | `/auth/register` | `{ name, email, password, role: 'student' \| 'teacher' }` | `AuthResponse` | 400 invalid input, 409 email taken |
+| POST | `/auth/register` | `{ name, email, password, role: 'student' }` | `AuthResponse` | 400 invalid input, 409 email taken |
+| PATCH | `/auth/me` | `{ name?, dailyGoal? }` (`dailyGoal` 1–100) | `User` | 400 invalid input, 401 |
+| POST | `/auth/change-password` | `{ currentPassword, newPassword }` | 204 | 400 wrong current password or short new one, 401 |
 | POST | `/auth/forgot-password` | `{ email }` | `{ message }` | 400 invalid email |
 | POST | `/auth/reset-password` | `{ token, password }` | `AuthResponse` (signs the user in) | 400 invalid or expired token, short password |
 | GET | `/auth/me` | — | `User` | 401 |
@@ -61,9 +63,36 @@ today; the backend may add more.
 - Password reset: `/auth/forgot-password` issues a **6-digit** code and emails it when SMTP is set
   (response is only `{ message }`). `/auth/reset-password` accepts that code as `token`.
 - **OPEN:** logout. The client only drops the token; no endpoint is called.
-- **OPEN:** should a teacher be able to self-register, or is the role assigned by an admin?
+- Roles: `student`, `admin`, and a legacy `teacher` the web app does not use (it treats it as a student). Registration never creates an admin; admins are created by
+  an admin or promoted in the database.
 - **OPEN:** validation errors: the mock returns 400 with a string `detail`; FastAPI's default is
   422 with a list. The client handles both.
+
+### Admin
+
+Only `role = 'admin'` may call these (403 otherwise). Admin accounts are not created through
+`/auth/register`; an admin creates them (`POST /admin/users`) or they are promoted in the
+database. `User.role` is `'student' | 'teacher' | 'admin'`. A locked account cannot log in:
+`POST /auth/login` answers 403 `Tài khoản đã bị khóa`.
+
+| Method | Path | Body / query | Response | Errors |
+|---|---|---|---|---|
+| GET | `/admin/stats` | — | `AdminStats` | 403 |
+| GET | `/admin/users` | `q?` (name or email), `role?`, `page?`, `pageSize?` (≤ 100) | `Paginated<AdminUser>` newest first | 403 |
+| POST | `/admin/users` | `{ name, email, password, role }` | `AdminUser` (201) | 400 invalid input or password < 6, 403, 409 email taken |
+| PATCH | `/admin/users/{id}` | `{ name?, role?, active? }` (at least one) | `AdminUser` | 400 invalid, changing your own `role` or `active`, or leaving no active admin; 403; 404 |
+| DELETE | `/admin/users/{id}` | — | 204; also deletes the user's learning data | 400 deleting yourself or the last active admin, 403, 404 |
+
+- You may change your own `name`; you may not change your own `role` or `active`, nor delete yourself.
+  No operation may leave the system without an active admin.
+
+- `AdminStats`: `users { total, students, admins, newLast7Days }`, `content { idioms, byTopic: Record<TopicId, number> }` (active idioms per topic, summing to `idioms`),
+  `activity { gradings, quizzes, flashcardReviews }` (all-time totals), `signupsByDay[]` of
+  `{ date: 'YYYY-MM-DD', count }` for the last 14 days, oldest first, zero-filled.
+- `AdminUser`: `id, name, email, role, active, createdAt, lastActiveAt` (`null` if never active;
+  latest of grading, quiz or flashcard review).
+- A locked user's existing token answers 401 `Tài khoản đã bị khóa`, so the client signs out; a new
+  sign-in answers 403 with the same text.
 
 ### Idioms
 
@@ -73,8 +102,15 @@ today; the backend may add more.
 | GET | `/idioms/daily` | — | `Idiom` | — |
 | GET | `/idioms/random` | `topic?, trait?` | `Idiom` | — |
 | GET | `/idioms/{id}` | — | `Idiom` | 404 |
-| GET | `/idioms/{id}/neighbors` | — | `Idiom[]` (alphabetical neighbours, up to 7 incl. itself) | 404 |
+| GET | `/idioms/{id}/neighbors` | — | `Idiom[]` (alphabetical neighbours, up to 7 incl. itself; `[]` for an archived idiom) | 404 |
+| POST | `/admin/idioms` | `IdiomInput` `{ phrase, explanation, topic, traits[], note?, citation?, glossary? }` | `Idiom` (201) | 400 invalid, 403, 409 duplicate phrase (case and diacritics ignored) |
+| PATCH | `/admin/idioms/{id}` | `IdiomInput` (replaces every editable field) | `Idiom` | 400, 403, 404 (also when archived), 409 duplicate phrase |
+| DELETE | `/admin/idioms/{id}` | — | 204; archives the idiom (suggest an `archived_at` column) | 403, 404 |
 
+- Admin only for the three writes. **Deleting archives:** an archived idiom is left out of `GET /idioms`,
+  `daily`, `random`, `neighbors` and of decks and quizzes generated afterwards, but `GET /idioms/{id}`
+  still returns it so grading history and flashcards that reference it keep working.
+  There is no restore endpoint. A new idiom gets the next integer id.
 - **OPEN:** default and maximum `pageSize` (the mock defaults to 20).
 - **OPEN:** search ranking. The mock ranks phrase prefix, whole word, partial phrase, then
   explanation, accent-insensitive.
@@ -122,32 +158,6 @@ today; the backend may add more.
 | Method | Path | Body / query | Response | Errors |
 |---|---|---|---|---|
 | GET | `/progress/summary` | — | `ProgressSummary` | — |
-
-### Classes (teacher creates, student joins)
-
-| Method | Path | Body / query | Response | Errors |
-|---|---|---|---|---|
-| GET | `/classes` | — | `Classroom[]` (teacher: own classes plus the seeded demo class, student: joined) | — |
-| POST | `/classes` | `{ name }` | `Classroom` | 400, 403 not a teacher |
-| GET | `/classes/{id}` | — | `Classroom` | 404 |
-| GET | `/classes/{id}/students` | — | `ClassStudent[]` | 404 |
-| GET | `/classes/{id}/report` | — | `ClassReport` | 404 |
-
-- **OPEN:** should students other than members get 403 instead of 404 for a class?
-
-### Assignments
-
-| Method | Path | Body / query | Response | Errors |
-|---|---|---|---|---|
-| GET | `/assignments` | `classId?` | `Assignment[]` | — |
-| POST | `/assignments` | `AssignmentInput` `{ classId, title, instructions, idiomIds, dueAt }` | `Assignment` | 400, 403 |
-| GET | `/assignments/{id}` | — | `Assignment` | 404 |
-| GET | `/assignments/{id}/submissions` | — | `Submission[]` | 403 not a teacher |
-| POST | `/submissions/{id}/review` | `SubmissionReview` `{ score: 0–5, comment }` | `Submission` | 400, 403, 404 |
-
-- **OPEN:** "not submitted yet" for `/submissions/me`: the mock returns `200` with `null`; a
-  `404` would need a client change.
-- **OPEN:** late submissions: accepted with status `late`, or rejected after `dueAt`?
 
 ## Switching from the mock to the real backend
 

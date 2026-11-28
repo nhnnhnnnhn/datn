@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, func
+from sqlalchemy import Boolean, DateTime, Integer, String, func, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -14,6 +14,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False)  # student, teacher, admin
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=true())
     daily_goal: Mapped[int] = mapped_column(Integer, nullable=False, server_default="10")
     password_reset_code_hash: Mapped[str | None] = mapped_column(
         String(64),

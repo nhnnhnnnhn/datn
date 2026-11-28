@@ -1,19 +1,16 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
-import type { Role } from '@/types'
 import { ApiError } from '@/api/client'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { Input, Label } from '@/components/ui/Field'
 import { ErrorMessage } from '@/components/ui/Feedback'
 import { USE_MOCK } from '@/lib/constants'
+import { homePath } from '@/lib/role'
 import { VIVID } from '@/lib/vivid'
-import { cn } from '@/lib/cn'
 
-const DEMO_ACCOUNTS: Record<Role, { name: string; email: string }> = {
-  student: { name: 'Học sinh Demo', email: 'demo.hocsinh@vivid.test' },
-  teacher: { name: 'Cô Nguyễn Thị Lan', email: 'demo.giaovien@vivid.test' },
-}
+const DEMO_STUDENT = { name: 'Học sinh Demo', email: 'demo.hocsinh@vivid.test' }
+const DEMO_ADMIN_EMAIL = 'demo.quantri@vivid.test'
 const DEMO_PASSWORD = 'demo-password'
 
 export default function Login() {
@@ -21,7 +18,6 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const [mode, setMode] = useState<'login' | 'register'>('login')
-  const [role, setRole] = useState<Role>('student')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -29,7 +25,7 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false)
 
   const from = (location.state as { from?: string } | null)?.from
-  if (user) return <Navigate to={from ?? (user.role === 'teacher' ? '/teacher' : '/')} replace />
+  if (user) return <Navigate to={from ?? homePath(user.role)} replace />
 
   async function run(action: () => Promise<void>) {
     setError(null)
@@ -46,19 +42,22 @@ export default function Login() {
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
-    run(() => (mode === 'login' ? login(email, password) : register(name, email, password, role)))
+    run(() => (mode === 'login' ? login(email, password) : register(name, email, password, 'student')))
   }
 
-  function tryDemo(demoRole: Role) {
-    const account = DEMO_ACCOUNTS[demoRole]
+  function tryDemo() {
     run(async () => {
       try {
-        await login(account.email, DEMO_PASSWORD)
+        await login(DEMO_STUDENT.email, DEMO_PASSWORD)
       } catch (err) {
         if (!(err instanceof ApiError && err.status === 401)) throw err
-        await register(account.name, account.email, DEMO_PASSWORD, demoRole)
+        await register(DEMO_STUDENT.name, DEMO_STUDENT.email, DEMO_PASSWORD, 'student')
       }
     })
+  }
+
+  function tryAdminDemo() {
+    run(() => login(DEMO_ADMIN_EMAIL, DEMO_PASSWORD))
   }
 
   return (
@@ -83,29 +82,10 @@ export default function Login() {
 
           <form onSubmit={onSubmit} className="mt-6 space-y-4 rounded-lg border border-stone-200 bg-white p-5">
             {mode === 'register' && (
-              <>
-                <fieldset>
-                  <legend className="mb-1.5 text-sm font-medium text-stone-700">Bạn là</legend>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(['student', 'teacher'] as const).map((r) => (
-                      <label
-                        key={r}
-                        className={cn(
-                          'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm',
-                          role === r ? 'border-stone-900 bg-stone-50 font-medium' : 'border-stone-300',
-                        )}
-                      >
-                        <input type="radio" name="role" value={r} checked={role === r} onChange={() => setRole(r)} className="accent-stone-900" />
-                        {r === 'student' ? 'Học sinh' : 'Giáo viên'}
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-                <div>
-                  <Label htmlFor="name">Họ và tên</Label>
-                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
-                </div>
-              </>
+              <div>
+                <Label htmlFor="name">Họ và tên</Label>
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+              </div>
             )}
             <div>
               <Label htmlFor="email">Email</Label>
@@ -152,11 +132,11 @@ export default function Login() {
             <div className="mt-8 border-t border-stone-200 pt-5">
               <p className="text-sm text-stone-600">Bản demo chưa có máy chủ. Vào thử bằng tài khoản mẫu:</p>
               <div className="mt-3 grid grid-cols-2 gap-2">
-                <Button variant="outline" onClick={() => tryDemo('student')} disabled={submitting}>
+                <Button variant="outline" onClick={tryDemo} disabled={submitting}>
                   Học sinh
                 </Button>
-                <Button variant="outline" onClick={() => tryDemo('teacher')} disabled={submitting}>
-                  Giáo viên
+                <Button variant="outline" onClick={tryAdminDemo} disabled={submitting}>
+                  Quản trị
                 </Button>
               </div>
             </div>

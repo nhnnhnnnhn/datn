@@ -9,8 +9,21 @@ export const httpApi: Api = {
     forgotPassword: (email) => request('POST', '/auth/forgot-password', { body: { email } }),
     resetPassword: (token, password) => request('POST', '/auth/reset-password', { body: { token, password } }),
     me: () => request('GET', '/auth/me'),
+    updateProfile: (input) => request('PATCH', '/auth/me', { body: input }),
+    changePassword: (currentPassword, newPassword) =>
+      request('POST', '/auth/change-password', { body: { currentPassword, newPassword } }),
     // Stateless JWT: logging out only drops the client-side token
     logout: async () => {},
+  },
+  admin: {
+    stats: () => request('GET', '/admin/stats'),
+    users: (query) => request('GET', '/admin/users', { query: { ...query } }),
+    createUser: (input) => request('POST', '/admin/users', { body: input }),
+    updateUser: (id, patch) => request('PATCH', `/admin/users/${id}`, { body: patch }),
+    deleteUser: (id) => request('DELETE', `/admin/users/${id}`),
+    createIdiom: (input) => request('POST', '/admin/idioms', { body: input }),
+    updateIdiom: (id, input) => request('PATCH', `/admin/idioms/${id}`, { body: input }),
+    archiveIdiom: (id) => request('DELETE', `/admin/idioms/${id}`),
   },
   idioms: {
     list: (query) => request('GET', '/idioms', { query: { ...query } }),
@@ -42,19 +55,5 @@ export const httpApi: Api = {
   },
   progress: {
     summary: () => request('GET', '/progress/summary'),
-  },
-  classes: {
-    list: () => request('GET', '/classes'),
-    get: (id) => request('GET', `/classes/${id}`),
-    create: (name) => request('POST', '/classes', { body: { name } }),
-    students: (id) => request('GET', `/classes/${id}/students`),
-    report: (id) => request('GET', `/classes/${id}/report`),
-  },
-  assignments: {
-    list: (classId) => request('GET', '/assignments', { query: { classId } }),
-    get: (id) => request('GET', `/assignments/${id}`),
-    create: (input) => request('POST', '/assignments', { body: input }),
-    submissions: (id) => request('GET', `/assignments/${id}/submissions`),
-    review: (submissionId, review) => request('POST', `/submissions/${submissionId}/review`, { body: review }),
   },
 }

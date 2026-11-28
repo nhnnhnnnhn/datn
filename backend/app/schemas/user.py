@@ -10,7 +10,7 @@ class RegisterIn(BaseModel):
     name: str
     email: str
     password: str
-    role: str = Field(pattern="^(student|teacher)$")
+    role: str = Field(default="student", pattern="^(student|teacher)$")
 
 
 class ForgotPasswordIn(BaseModel):

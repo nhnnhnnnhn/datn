@@ -18,11 +18,10 @@ import SetLearn from '@/pages/SetLearn'
 import SetMatch from '@/pages/SetMatch'
 import SetWrite from '@/pages/SetWrite'
 import Quiz from '@/pages/Quiz'
-import Classes from '@/pages/teacher/Classes'
-import ClassDetail from '@/pages/teacher/ClassDetail'
-import AssignmentNew from '@/pages/teacher/AssignmentNew'
-import AssignmentReview from '@/pages/teacher/AssignmentReview'
 import NotFound from '@/pages/NotFound'
+import Profile from '@/pages/Profile'
+import AdminHome from '@/pages/admin/AdminHome'
+import { appRole, homePath } from '@/lib/role'
 
 const log = createLogger('ROUTER')
 
@@ -46,9 +45,10 @@ function RequireAuth({ children }: { children: ReactNode }) {
 
 function RequireRole({ role }: { role: Role }) {
   const { user } = useAuth()
-  if (user?.role !== role) {
-    log.debug('role mismatch, redirecting', { need: role, have: user?.role })
-    return <Navigate to={user?.role === 'teacher' ? '/teacher' : '/'} replace />
+  const current = appRole(user?.role)
+  if (current !== role) {
+    log.debug('role mismatch, redirecting', { need: role, have: current })
+    return <Navigate to={homePath(current)} replace />
   }
   return <Outlet />
 }
@@ -69,6 +69,7 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="idioms" element={<Idioms />} />
           <Route path="idioms/:id" element={<IdiomDetail />} />
+          <Route path="profile" element={<Profile />} />
           <Route element={<RequireRole role="student" />}>
             <Route index element={<Dashboard />} />
             <Route path="practice" element={<Practice />} />
@@ -76,11 +77,8 @@ export default function App() {
             <Route path="sets/:deckId" element={<SetDetail />} />
             <Route path="quiz" element={<Quiz />} />
           </Route>
-          <Route path="teacher" element={<RequireRole role="teacher" />}>
-            <Route index element={<Classes />} />
-            <Route path="classes/:id" element={<ClassDetail />} />
-            <Route path="assignments/new" element={<AssignmentNew />} />
-            <Route path="assignments/:id" element={<AssignmentReview />} />
+          <Route path="admin" element={<RequireRole role="admin" />}>
+            <Route index element={<AdminHome />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Route>

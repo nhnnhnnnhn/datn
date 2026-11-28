@@ -31,6 +31,15 @@ export function Select({ className, children, style, ...rest }: SelectHTMLAttrib
   )
 }
 
+export function FieldError({ id, children }: { id?: string; children?: ReactNode }) {
+  if (!children) return null
+  return (
+    <p id={id} className="mt-1 text-xs text-red-700">
+      {children}
+    </p>
+  )
+}
+
 export function Label({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) {
   return (
     <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium text-stone-700">

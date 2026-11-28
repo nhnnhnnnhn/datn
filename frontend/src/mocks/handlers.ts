@@ -1,11 +1,11 @@
 import { http, HttpResponse } from 'msw/http'
 import { delay } from 'msw/utils/delay'
 import { ApiError, BASE_URL } from '@/api/client'
-import type { AssignmentInput, DeckGenerateConfig, QuizAnswer, QuizConfig, ReviewRating, Role, SubmissionReview, TopicId, TraitId, User } from '@/types'
+import type { AdminUserInput, AdminUserPatch, DeckGenerateConfig, IdiomInput, QuizAnswer, QuizConfig, ReviewRating, Role, SignUpRole, ProfileUpdate, TopicId, TraitId, User } from '@/types'
 import { mockApi } from './mockApi'
 import { read, write } from './store'
 
-type Method = 'get' | 'post' | 'delete'
+type Method = 'get' | 'post' | 'patch' | 'delete'
 
 interface Ctx {
   params: Record<string, string>
@@ -62,7 +62,7 @@ export const handlers = [
     return mockApi.auth.login(email, password)
   }, { auth: false }),
   route('post', '/auth/register', async ({ request }) => {
-    const { name, email, password, role } = await body<{ name: string; email: string; password: string; role: Role }>(request)
+    const { name, email, password, role } = await body<{ name: string; email: string; password: string; role: SignUpRole }>(request)
     return mockApi.auth.register(name, email, password, role)
   }, { auth: false }),
   route('post', '/auth/forgot-password', async ({ request }) => {
@@ -74,6 +74,31 @@ export const handlers = [
     return mockApi.auth.resetPassword(token, password)
   }, { auth: false }),
   route('get', '/auth/me', () => mockApi.auth.me()),
+  route('patch', '/auth/me', async ({ request }) => mockApi.auth.updateProfile(await body<ProfileUpdate>(request))),
+  route('post', '/auth/change-password', async ({ request }) => {
+    const { currentPassword, newPassword } = await body<{ currentPassword: string; newPassword: string }>(request)
+    return mockApi.auth.changePassword(currentPassword, newPassword)
+  }),
+
+  route('get', '/admin/stats', () => mockApi.admin.stats()),
+  route('get', '/admin/users', ({ query }) =>
+    mockApi.admin.users({
+      q: str(query.get('q')),
+      role: str<Role>(query.get('role')),
+      page: num(query.get('page')),
+      pageSize: num(query.get('pageSize')),
+    }),
+  ),
+  route('post', '/admin/users', async ({ request }) => mockApi.admin.createUser(await body<AdminUserInput>(request))),
+  route('patch', '/admin/users/:id', async ({ params, request }) =>
+    mockApi.admin.updateUser(params.id, await body<AdminUserPatch>(request)),
+  ),
+  route('delete', '/admin/users/:id', ({ params }) => mockApi.admin.deleteUser(params.id)),
+  route('post', '/admin/idioms', async ({ request }) => mockApi.admin.createIdiom(await body<IdiomInput>(request))),
+  route('patch', '/admin/idioms/:id', async ({ params, request }) =>
+    mockApi.admin.updateIdiom(Number(params.id), await body<IdiomInput>(request)),
+  ),
+  route('delete', '/admin/idioms/:id', ({ params }) => mockApi.admin.archiveIdiom(Number(params.id))),
 
   route('get', '/idioms', ({ query }) =>
     mockApi.idioms.list({
@@ -124,20 +149,6 @@ export const handlers = [
   }),
 
   route('get', '/progress/summary', () => mockApi.progress.summary()),
-
-  route('get', '/classes', () => mockApi.classes.list()),
-  route('post', '/classes', async ({ request }) => mockApi.classes.create((await body<{ name: string }>(request)).name)),
-  route('get', '/classes/:id', ({ params }) => mockApi.classes.get(params.id)),
-  route('get', '/classes/:id/students', ({ params }) => mockApi.classes.students(params.id)),
-  route('get', '/classes/:id/report', ({ params }) => mockApi.classes.report(params.id)),
-
-  route('get', '/assignments', ({ query }) => mockApi.assignments.list(str(query.get('classId')))),
-  route('post', '/assignments', async ({ request }) => mockApi.assignments.create(await body<AssignmentInput>(request))),
-  route('get', '/assignments/:id', ({ params }) => mockApi.assignments.get(params.id)),
-  route('get', '/assignments/:id/submissions', ({ params }) => mockApi.assignments.submissions(params.id)),
-  route('post', '/submissions/:id/review', async ({ params, request }) =>
-    mockApi.assignments.review(params.id, await body<SubmissionReview>(request)),
-  ),
 
   http.all(`${BASE_URL}/*`, ({ request }) =>
     HttpResponse.json({ detail: `Mock chưa có route ${request.method} ${new URL(request.url).pathname}` }, { status: 404 }),

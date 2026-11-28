@@ -1,38 +1,50 @@
 import type {
-  Assignment,
-  AssignmentInput,
+  AdminStats,
+  AdminUser,
+  AdminUserInput,
+  AdminUserPatch,
+  AdminUserQuery,
   AuthResponse,
-  ClassReport,
-  ClassStudent,
-  Classroom,
   Deck,
   DeckGenerateConfig,
   Flashcard,
   ForgotPasswordResponse,
   GradingResult,
   Idiom,
+  IdiomInput,
   IdiomQuery,
   Paginated,
+  ProfileUpdate,
   ProgressSummary,
   Quiz,
   QuizAnswer,
   QuizConfig,
   QuizResult,
   ReviewRating,
-  Role,
-  Submission,
-  SubmissionReview,
+  SignUpRole,
   User,
 } from '@/types'
 
 export interface Api {
   auth: {
     login(email: string, password: string): Promise<AuthResponse>
-    register(name: string, email: string, password: string, role: Role): Promise<AuthResponse>
+    register(name: string, email: string, password: string, role: SignUpRole): Promise<AuthResponse>
     forgotPassword(email: string): Promise<ForgotPasswordResponse>
     resetPassword(token: string, password: string): Promise<AuthResponse>
     me(): Promise<User>
+    updateProfile(input: ProfileUpdate): Promise<User>
+    changePassword(currentPassword: string, newPassword: string): Promise<void>
     logout(): Promise<void>
+  }
+  admin: {
+    stats(): Promise<AdminStats>
+    users(query: AdminUserQuery): Promise<Paginated<AdminUser>>
+    createUser(input: AdminUserInput): Promise<AdminUser>
+    updateUser(id: string, patch: AdminUserPatch): Promise<AdminUser>
+    deleteUser(id: string): Promise<void>
+    createIdiom(input: IdiomInput): Promise<Idiom>
+    updateIdiom(id: number, input: IdiomInput): Promise<Idiom>
+    archiveIdiom(id: number): Promise<void>
   }
   idioms: {
     list(query: IdiomQuery): Promise<Paginated<Idiom>>
@@ -62,19 +74,5 @@ export interface Api {
   }
   progress: {
     summary(): Promise<ProgressSummary>
-  }
-  classes: {
-    list(): Promise<Classroom[]>
-    get(id: string): Promise<Classroom>
-    create(name: string): Promise<Classroom>
-    students(id: string): Promise<ClassStudent[]>
-    report(id: string): Promise<ClassReport>
-  }
-  assignments: {
-    list(classId?: string): Promise<Assignment[]>
-    get(id: string): Promise<Assignment>
-    create(input: AssignmentInput): Promise<Assignment>
-    submissions(id: string): Promise<Submission[]>
-    review(submissionId: string, review: SubmissionReview): Promise<Submission>
   }
 }

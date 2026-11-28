@@ -23,6 +23,12 @@ class Idiom(Base):
         DateTime(timezone=True),
         server_default=func.now(),
     )
+    # Deleting an idiom archives it: hidden from students, kept for study history
+    archived_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
 
     aspects = relationship("IdiomAspect", secondary="idiom_aspect_map", back_populates="idioms")
     submissions = relationship("Submission", back_populates="idiom")
