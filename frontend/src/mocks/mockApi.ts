@@ -9,12 +9,13 @@ import { createLogger } from '@/lib/logger'
 import { IDIOMS } from './idioms.data'
 import { gradeAnswer } from './grader'
 import { generateQuestions } from './quizGen'
-import { adminMock, DEMO_ADMIN_EMAIL, ensureDemoAdmin, isActive } from './admin'
-import { classroom } from './classroom'
+import { adminMock, DEMO_ADMIN_EMAIL, ensureDemoAdmin, isActive, migrateLegacy } from './admin'
 import { DAY, avg, bestScores, byId, currentUser, idiomOrThrow, loadDb, saveDb, withRole, type Db, type StoredCard, type StoredDeck } from './db'
 import { delay, pick, read, remove, shuffle, uid, write } from './store'
 
-const ALPHABETICAL = [...IDIOMS].sort((a, b) => a.phrase.localeCompare(b.phrase, 'vi'))
+migrateLegacy()
+
+const ALPHABETICAL =[...IDIOMS].sort((a, b) => a.phrase.localeCompare(b.phrase, 'vi'))
 const SEARCH_INDEX = IDIOMS.map((i) => ({ phrase: ` ${normalize(i.phrase)} `, explanation: normalize(i.explanation) }))
 
 // Lower is better: phrase prefix, whole-word match in the phrase, partial phrase match, then meaning
@@ -77,8 +78,6 @@ const rawMockApi: Api = {
       if (users[key]) throw new ApiError(409, 'Email đã được đăng ký')
       const user: User = { id: uid(), name: name.trim(), email: key, role, dailyGoal: 10, createdAt: new Date().toISOString() }
       write('users', { ...users, [key]: user })
-      // Demo convenience: new students start inside the seeded class so assignments show up
-      if (role === 'student') classroom.enroll(user.id)
       return startSession(user)
     },
     async forgotPassword(email) {
@@ -450,53 +449,6 @@ const rawMockApi: Api = {
         activity,
         weakIdioms,
       }
-    },
-  },
-
-  classes: {
-    async list() {
-      await delay(200)
-      return classroom.listClasses(currentUser())
-    },
-    async get(id) {
-      await delay(120)
-      return classroom.getClass(currentUser(), id)
-    },
-    async create(name) {
-      await delay(300)
-      if (!name.trim()) throw new ApiError(400, 'Vui lòng nhập tên lớp')
-      return classroom.createClass(currentUser(), name)
-    },
-    async students(id) {
-      await delay(200)
-      return classroom.students(currentUser(), id)
-    },
-    async report(id) {
-      await delay(300)
-      return classroom.report(currentUser(), id)
-    },
-  },
-
-  assignments: {
-    async list(classId) {
-      await delay(200)
-      return classroom.listAssignments(currentUser(), classId)
-    },
-    async get(id) {
-      await delay(120)
-      return classroom.getAssignment(currentUser(), id)
-    },
-    async create(input) {
-      await delay(400)
-      return classroom.createAssignment(currentUser(), input)
-    },
-    async submissions(id) {
-      await delay(250)
-      return classroom.submissions(currentUser(), id)
-    },
-    async review(submissionId, review) {
-      await delay(300)
-      return classroom.review(currentUser(), submissionId, review.score, review.comment)
     },
   },
 }

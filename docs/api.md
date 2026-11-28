@@ -51,7 +51,7 @@ today; the backend may add more.
 | Method | Path | Body / query | Response | Errors |
 |---|---|---|---|---|
 | POST | `/auth/login` | `{ email, password }` | `AuthResponse` `{ token, user: User }` | 400 invalid input, 401 wrong credentials |
-| POST | `/auth/register` | `{ name, email, password, role: 'student' \| 'teacher' }` | `AuthResponse` | 400 invalid input, 409 email taken |
+| POST | `/auth/register` | `{ name, email, password, role: 'student' }` | `AuthResponse` | 400 invalid input, 409 email taken |
 | PATCH | `/auth/me` | `{ name?, dailyGoal? }` (`dailyGoal` 1–100) | `User` | 400 invalid input, 401 |
 | POST | `/auth/change-password` | `{ currentPassword, newPassword }` | 204 | 400 wrong current password or short new one, 401 |
 | POST | `/auth/forgot-password` | `{ email }` | `{ message }` | 400 invalid email |
@@ -63,7 +63,8 @@ today; the backend may add more.
 - Password reset: `/auth/forgot-password` issues a **6-digit** code and emails it when SMTP is set
   (response is only `{ message }`). `/auth/reset-password` accepts that code as `token`.
 - **OPEN:** logout. The client only drops the token; no endpoint is called.
-- **OPEN:** should a teacher be able to self-register, or is the role assigned by an admin?
+- Roles are `student` and `admin` only. Registration always creates a student; admins are created by
+  an admin or promoted in the database.
 - **OPEN:** validation errors: the mock returns 400 with a string `detail`; FastAPI's default is
   422 with a list. The client handles both.
 
@@ -71,7 +72,7 @@ today; the backend may add more.
 
 Only `role = 'admin'` may call these (403 otherwise). Admin accounts are not created through
 `/auth/register`; promote an existing user in the database. `User.role` becomes
-`'student' | 'teacher' | 'admin'`. A locked account cannot log in: `POST /auth/login` answers
+`'student' | 'admin'`. A locked account cannot log in: `POST /auth/login` answers
 403 `Tài khoản đã bị khóa`.
 
 | Method | Path | Body / query | Response | Errors |
@@ -80,7 +81,7 @@ Only `role = 'admin'` may call these (403 otherwise). Admin accounts are not cre
 | GET | `/admin/users` | `q?` (name or email), `role?`, `page?`, `pageSize?` (≤ 100) | `Paginated<AdminUser>` newest first | 403 |
 | PATCH | `/admin/users/{id}` | `{ active: boolean }` | `AdminUser` | 400 locking yourself, 403, 404 |
 
-- `AdminStats`: `users { total, students, teachers, admins, newLast7Days }`, `content { idioms }`,
+- `AdminStats`: `users { total, students, admins, newLast7Days }`, `content { idioms }`,
   `activity { gradings, quizzes, flashcardReviews }` (all-time totals), `signupsByDay[]` of
   `{ date: 'YYYY-MM-DD', count }` for the last 14 days, oldest first, zero-filled.
 - `AdminUser`: `id, name, email, role, active, createdAt, lastActiveAt` (`null` if never active;
@@ -144,32 +145,6 @@ Only `role = 'admin'` may call these (403 otherwise). Admin accounts are not cre
 | Method | Path | Body / query | Response | Errors |
 |---|---|---|---|---|
 | GET | `/progress/summary` | — | `ProgressSummary` | — |
-
-### Classes (teacher creates, student joins)
-
-| Method | Path | Body / query | Response | Errors |
-|---|---|---|---|---|
-| GET | `/classes` | — | `Classroom[]` (teacher: own classes plus the seeded demo class, student: joined) | — |
-| POST | `/classes` | `{ name }` | `Classroom` | 400, 403 not a teacher |
-| GET | `/classes/{id}` | — | `Classroom` | 404 |
-| GET | `/classes/{id}/students` | — | `ClassStudent[]` | 404 |
-| GET | `/classes/{id}/report` | — | `ClassReport` | 404 |
-
-- **OPEN:** should students other than members get 403 instead of 404 for a class?
-
-### Assignments
-
-| Method | Path | Body / query | Response | Errors |
-|---|---|---|---|---|
-| GET | `/assignments` | `classId?` | `Assignment[]` | — |
-| POST | `/assignments` | `AssignmentInput` `{ classId, title, instructions, idiomIds, dueAt }` | `Assignment` | 400, 403 |
-| GET | `/assignments/{id}` | — | `Assignment` | 404 |
-| GET | `/assignments/{id}/submissions` | — | `Submission[]` | 403 not a teacher |
-| POST | `/submissions/{id}/review` | `SubmissionReview` `{ score: 0–5, comment }` | `Submission` | 400, 403, 404 |
-
-- **OPEN:** "not submitted yet" for `/submissions/me`: the mock returns `200` with `null`; a
-  `404` would need a client change.
-- **OPEN:** late submissions: accepted with status `late`, or rejected after `dueAt`?
 
 ## Switching from the mock to the real backend
 

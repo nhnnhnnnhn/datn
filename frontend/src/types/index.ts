@@ -40,7 +40,7 @@ export interface Paginated<T> {
   pageSize: number
 }
 
-export type SignUpRole = 'student' | 'teacher'
+export type SignUpRole = 'student'
 export type Role = SignUpRole | 'admin'
 
 export interface User {
@@ -70,7 +70,7 @@ export interface AdminUserQuery {
 }
 
 export interface AdminStats {
-  users: { total: number; students: number; teachers: number; admins: number; newLast7Days: number }
+  users: { total: number; students: number; admins: number; newLast7Days: number }
   content: { idioms: number }
   activity: { gradings: number; quizzes: number; flashcardReviews: number }
   // Last 14 days, oldest first, one entry per day (YYYY-MM-DD)
@@ -261,85 +261,4 @@ export interface ProgressSummary {
   byTrait: TraitStat[]
   activity: ActivityDay[]
   weakIdioms: { idiom: Idiom; bestScore: number }[]
-}
-
-export interface Classroom {
-  id: string
-  name: string
-  code: string
-  teacherName: string
-  studentCount: number
-  createdAt: string
-}
-
-export interface ClassStudent {
-  id: string
-  name: string
-  email: string
-  lastActiveAt: string | null
-  attempts: number
-  avgScore: number | null
-}
-
-export interface MasteryCell {
-  level: MasteryLevel
-  avgScore: number | null
-  attempts: number
-}
-
-export interface ClassReport {
-  classId: string
-  rows: { student: ClassStudent; mastery: Record<TraitId, MasteryCell> }[]
-  traitAverages: Record<TraitId, number | null>
-}
-
-export type SubmissionStatus = 'assigned' | 'submitted' | 'late' | 'missing' | 'returned'
-
-export interface Assignment {
-  id: string
-  classId: string
-  className: string
-  title: string
-  instructions: string
-  idiomIds: number[]
-  dueAt: string
-  createdAt: string
-  studentCount: number
-  submittedCount: number
-  myStatus?: SubmissionStatus
-}
-
-export interface AssignmentInput {
-  classId: string
-  title: string
-  instructions: string
-  idiomIds: number[]
-  dueAt: string
-}
-
-export interface SubmissionItem {
-  idiomId: number
-  phrase: string
-  answer: string
-  overall: number
-  scores: CriterionScores
-  summary: string
-}
-
-export interface Submission {
-  id: string
-  assignmentId: string
-  studentId: string
-  studentName: string
-  status: SubmissionStatus
-  submittedAt: string | null
-  items: SubmissionItem[]
-  aiScore: number | null
-  teacherScore: number | null
-  teacherComment: string | null
-}
-
-export interface SubmissionReview {
-  score: number
-  comment: string
 }

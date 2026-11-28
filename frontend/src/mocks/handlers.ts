@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw/http'
 import { delay } from 'msw/utils/delay'
 import { ApiError, BASE_URL } from '@/api/client'
-import type { AssignmentInput, DeckGenerateConfig, QuizAnswer, QuizConfig, ReviewRating, Role, SignUpRole, SubmissionReview, ProfileUpdate, TopicId, TraitId, User } from '@/types'
+import type { DeckGenerateConfig, QuizAnswer, QuizConfig, ReviewRating, Role, SignUpRole, ProfileUpdate, TopicId, TraitId, User } from '@/types'
 import { mockApi } from './mockApi'
 import { read, write } from './store'
 
@@ -143,20 +143,6 @@ export const handlers = [
   }),
 
   route('get', '/progress/summary', () => mockApi.progress.summary()),
-
-  route('get', '/classes', () => mockApi.classes.list()),
-  route('post', '/classes', async ({ request }) => mockApi.classes.create((await body<{ name: string }>(request)).name)),
-  route('get', '/classes/:id', ({ params }) => mockApi.classes.get(params.id)),
-  route('get', '/classes/:id/students', ({ params }) => mockApi.classes.students(params.id)),
-  route('get', '/classes/:id/report', ({ params }) => mockApi.classes.report(params.id)),
-
-  route('get', '/assignments', ({ query }) => mockApi.assignments.list(str(query.get('classId')))),
-  route('post', '/assignments', async ({ request }) => mockApi.assignments.create(await body<AssignmentInput>(request))),
-  route('get', '/assignments/:id', ({ params }) => mockApi.assignments.get(params.id)),
-  route('get', '/assignments/:id/submissions', ({ params }) => mockApi.assignments.submissions(params.id)),
-  route('post', '/submissions/:id/review', async ({ params, request }) =>
-    mockApi.assignments.review(params.id, await body<SubmissionReview>(request)),
-  ),
 
   http.all(`${BASE_URL}/*`, ({ request }) =>
     HttpResponse.json({ detail: `Mock chưa có route ${request.method} ${new URL(request.url).pathname}` }, { status: 404 }),

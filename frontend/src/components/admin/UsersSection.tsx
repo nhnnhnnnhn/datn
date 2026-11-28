@@ -102,7 +102,6 @@ export function UsersSection() {
         >
           <option value="">Mọi vai trò</option>
           <option value="student">Học sinh</option>
-          <option value="teacher">Giáo viên</option>
           <option value="admin">Quản trị viên</option>
         </Select>
       </div>

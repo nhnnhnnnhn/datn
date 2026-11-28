@@ -26,7 +26,7 @@ export function StatsSection() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Tile label="Người dùng" value={users.total} />
         <Tile label="Học sinh" value={users.students} />
-        <Tile label="Giáo viên" value={users.teachers} />
+        <Tile label="Quản trị viên" value={users.admins} />
         <Tile label="Đăng ký 7 ngày qua" value={users.newLast7Days} />
         <Tile label="Thành ngữ trong kho" value={content.idioms} />
         <Tile label="Lượt chấm bài viết" value={activity.gradings} />

@@ -3,7 +3,7 @@ import type { AdminStats, AdminUser, AdminUserQuery, Paginated, Role, User } fro
 import { normalize, toDateKey } from '@/lib/text'
 import { IDIOMS } from './idioms.data'
 import { DAY, currentUser, dbKey, type Db } from './db'
-import { read, seededRandom, write } from './store'
+import { read, remove, seededRandom, write } from './store'
 
 export const DEMO_ADMIN_EMAIL = 'demo.quantri@vivid.test'
 const SIGNUP_DAYS = 14
@@ -26,14 +26,13 @@ function seededUsers(): Row[] {
   const now = Date.now()
   return Array.from({ length: 24 }, (_, i) => {
     const name = `${FAMILY[Math.floor(rng() * FAMILY.length)]} ${GIVEN[Math.floor(rng() * GIVEN.length)]}`
-    const role: Role = i % 8 === 0 ? 'teacher' : 'student'
     const createdAt = new Date(now - Math.floor(rng() * 30) * DAY - Math.floor(rng() * DAY)).toISOString()
-    const recentlyActive = role === 'student' && rng() < 0.75
+    const recentlyActive = rng() < 0.75
     return {
       id: `seed-${i}`,
       name,
       email: `${normalize(name).replace(/\s+/g, '.')}.${i}@vivid.test`,
-      role,
+      role: 'student',
       active: true,
       createdAt,
       lastActiveAt: recentlyActive ? new Date(now - Math.floor(rng() * 5) * DAY).toISOString() : null,
@@ -67,7 +66,21 @@ export function ensureDemoAdmin() {
   write('users', { ...users, [DEMO_ADMIN_EMAIL]: admin })
 }
 
-function requireAdmin() {
+const MIGRATED_FLAG = 'admin:migrated:v1'
+
+// The teacher role no longer exists: demo accounts created with it become students
+export function migrateLegacy() {
+  if (read<boolean>(MIGRATED_FLAG, false)) return
+  const asStudent = <T extends User>(user: T): T => ((user.role as string) === 'teacher' ? { ...user, role: 'student' } : user)
+  const users = read<Record<string, User>>('users', {})
+  write('users', Object.fromEntries(Object.entries(users).map(([email, user]) => [email, asStudent(user)])))
+  const session = read<User | null>('session', null)
+  if (session) write('session', asStudent(session))
+  remove('classroom:v2')
+  write(MIGRATED_FLAG, true)
+}
+
+export function requireAdmin() {
   if (currentUser().role !== 'admin') throw new ApiError(403, 'Bạn không có quyền truy cập')
 }
 
@@ -112,7 +125,6 @@ export const adminMock = {
       users: {
         total: users.length,
         students: count('student'),
-        teachers: count('teacher'),
         admins: count('admin'),
         newLast7Days: users.filter((u) => now - new Date(u.createdAt).getTime() < 7 * DAY).length,
       },

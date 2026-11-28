@@ -1,4 +1,4 @@
-import type { Criterion, ErrorType, MasteryLevel, QuestionType, SubmissionStatus, TopicId, TraitId } from '@/types'
+import type { Criterion, ErrorType, MasteryLevel, QuestionType, TopicId, TraitId } from '@/types'
 
 export const TOPIC_IDS: TopicId[] = [
   'criticism',
@@ -132,14 +132,6 @@ export const MASTERY: Record<MasteryLevel, { label: string; color: string; ink: 
   familiar: { label: 'Làm quen', color: '#3b6fe0', ink: '#ffffff' },
   proficient: { label: 'Thành thạo', color: '#1f4fb8', ink: '#ffffff' },
   mastered: { label: 'Thông thạo', color: '#14306f', ink: '#ffffff' },
-}
-
-export const SUBMISSION_STATUS: Record<SubmissionStatus, { label: string; className: string }> = {
-  assigned: { label: 'Chưa nộp', className: 'text-stone-600' },
-  submitted: { label: 'Đã nộp', className: 'text-emerald-700' },
-  late: { label: 'Nộp muộn', className: 'text-amber-700' },
-  missing: { label: 'Quá hạn', className: 'text-red-700' },
-  returned: { label: 'Đã trả bài', className: 'text-sky-700' },
 }
 
 // Unset: mock in `vite dev` only. Builds opt in with VITE_USE_MOCK=true (e.g. the demo deploy)

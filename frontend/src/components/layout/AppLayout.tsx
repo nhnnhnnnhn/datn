@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, Flame, House, Layers, PenLine, ShieldCheck, Users } from 'lucide-react'
+import { BookOpen, Flame, House, Layers, PenLine, ShieldCheck } from 'lucide-react'
 import { api } from '@/api'
 import { useAuth } from '@/context/AuthContext'
 import { ROLE_LABEL, homePath } from '@/lib/role'
@@ -13,11 +13,6 @@ const STUDENT_NAV = [
   { to: '/idioms', label: 'Tra cứu', icon: BookOpen },
   { to: '/practice', label: 'Luyện viết', icon: PenLine },
   { to: '/sets', label: 'Bộ thẻ', icon: Layers },
-]
-
-const TEACHER_NAV = [
-  { to: '/teacher', label: 'Lớp học', icon: Users, end: false },
-  { to: '/idioms', label: 'Tra cứu', icon: BookOpen },
 ]
 
 const ADMIN_NAV = [
@@ -90,7 +85,7 @@ function UserMenu() {
 export function AppLayout() {
   const { user } = useAuth()
   const nav: { to: string; label: string; icon: typeof House; end?: boolean }[] =
-    user?.role === 'admin' ? ADMIN_NAV : user?.role === 'teacher' ? TEACHER_NAV : STUDENT_NAV
+    user?.role === 'admin' ? ADMIN_NAV : STUDENT_NAV
 
   return (
     <div className="min-h-dvh">

@@ -2,12 +2,7 @@ import type {
   AdminStats,
   AdminUser,
   AdminUserQuery,
-  Assignment,
-  AssignmentInput,
   AuthResponse,
-  ClassReport,
-  ClassStudent,
-  Classroom,
   Deck,
   DeckGenerateConfig,
   Flashcard,
@@ -24,8 +19,6 @@ import type {
   QuizResult,
   ReviewRating,
   SignUpRole,
-  Submission,
-  SubmissionReview,
   User,
 } from '@/types'
 
@@ -73,19 +66,5 @@ export interface Api {
   }
   progress: {
     summary(): Promise<ProgressSummary>
-  }
-  classes: {
-    list(): Promise<Classroom[]>
-    get(id: string): Promise<Classroom>
-    create(name: string): Promise<Classroom>
-    students(id: string): Promise<ClassStudent[]>
-    report(id: string): Promise<ClassReport>
-  }
-  assignments: {
-    list(classId?: string): Promise<Assignment[]>
-    get(id: string): Promise<Assignment>
-    create(input: AssignmentInput): Promise<Assignment>
-    submissions(id: string): Promise<Submission[]>
-    review(submissionId: string, review: SubmissionReview): Promise<Submission>
   }
 }

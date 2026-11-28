@@ -51,18 +51,4 @@ export const httpApi: Api = {
   progress: {
     summary: () => request('GET', '/progress/summary'),
   },
-  classes: {
-    list: () => request('GET', '/classes'),
-    get: (id) => request('GET', `/classes/${id}`),
-    create: (name) => request('POST', '/classes', { body: { name } }),
-    students: (id) => request('GET', `/classes/${id}/students`),
-    report: (id) => request('GET', `/classes/${id}/report`),
-  },
-  assignments: {
-    list: (classId) => request('GET', '/assignments', { query: { classId } }),
-    get: (id) => request('GET', `/assignments/${id}`),
-    create: (input) => request('POST', '/assignments', { body: input }),
-    submissions: (id) => request('GET', `/assignments/${id}/submissions`),
-    review: (submissionId, review) => request('POST', `/submissions/${submissionId}/review`, { body: review }),
-  },
 }
